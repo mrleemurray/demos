@@ -1,6 +1,10 @@
 <template>
-    <div :class="`tab-icon ${state} ${computedIsCollapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''} ${position} ${suggestionHover ? 'pulse-outline' : ''}`"
-         @mouseenter="isHovered = true" @mouseleave="isHovered = false" @click="handleClick">
+    <div 
+        :class="`tab-icon ${state} ${computedIsCollapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''} ${position} ${suggestionHover ? 'pulse-outline' : ''} ${multiLine ? 'multiline' : ''}`"
+        @mouseenter="isHovered = true" 
+        @mouseleave="isHovered = false" 
+        @click="handleClick"
+    >
         <span>{{ lineNumber }}</span>
         <div v-html="(isHovered && position === 'center') || suggestionHover ? check : currentIcon" class="icon" ></div>
     </div>
@@ -32,6 +36,10 @@ export default {
             default: false
         },
         completed: {
+            type: Boolean,
+            default: false
+        },
+        multiLine : {
             type: Boolean,
             default: false
         }
@@ -189,7 +197,8 @@ span {
 }
 
 .tab-icon.unfocused::before {
-    background-color: #3A3D41;
+    background-color: #1e1e1e;
+    outline: 1px solid #3A3D41;
 }
 
 .above {
@@ -198,6 +207,14 @@ span {
 
 .below {
     transform: translateY(200%);
+}
+
+.multiline.above {
+    transform: translateY(-325%);
+}
+
+.multiline.below {
+    transform: translateY(432%);
 }
 
 @keyframes pulseOutline {

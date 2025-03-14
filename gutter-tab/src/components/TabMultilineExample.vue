@@ -12,6 +12,7 @@
 				:start-state="state"
 				:suggestion-hover="suggestionHover"
 				:completed="isCompleted"
+				multi-line="true"
 				@completed="isCompleted = true; state = 'active'"
 				@inBounds="inBounds = true"
 				@active="state = 'active'; position = 'center'"
@@ -302,11 +303,15 @@ h4 {
 	height: calc(100% - 8px);
 	background-color: #858585;
 	top: 4px;
-	right: 12px;
+	right: 7px;
 	transition: background-color 0.1s ease-in
 }
 
 .affected-lines-indicator.active::before {
 	background-color: #007ACC;
+}
+
+.affected-lines-indicator.unfocused::before {
+	background-color: #3A3D41;
 }
 </style>

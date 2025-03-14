@@ -27,7 +27,7 @@
 			title="Above viewport, Cursor outside suggestion"
 			start-position="above"
 			start-state="pending"
-			line-number="3"
+			line-number="30"
 		/>
 		<TabExample 
 			title="Above viewport, Cursor outside of editor focus"
@@ -65,6 +65,49 @@
 			start-position="center"
 			start-state="pending"
 			line-number="3000"
+		/>
+
+		<TabMultilineExample 
+			title="Multiple lines | In viewport, Cursor outside of editor focus"
+			start-position="center"
+			start-state="unfocused"
+			line-number="3000"
+		/>
+
+		<TabMultilineExample 
+			title="Multiple lines | Above viewport, Cursor inside suggestion"
+			start-position="above"
+			line-number="30"
+		/>
+
+		<TabMultilineExample 
+			title="Multiple lines | Above viewport, Cursor outside suggestion"
+			start-position="above"
+			start-state="pending"
+			line-number="30"
+		/>
+		<TabMultilineExample 
+			title="Multiple lines | Above viewport, Cursor outside of editor focus"
+			start-position="above"
+			start-state="unfocused"
+			line-number="300"
+		/>
+		<TabMultilineExample 
+			title="Multiple lines | Below viewport, Cursor inside suggestion"
+			start-position="below"
+			line-number="300"
+		/>
+		<TabMultilineExample 
+			title="Multiple lines | Below viewport, Cursor outside suggestion"
+			start-position="below"
+			start-state="pending"
+			line-number="300"
+		/>
+		<TabMultilineExample 
+			title="Multiple lines | Below viewport, Cursor outside of editor focus"
+			start-position="below"
+			start-state="unfocused"
+			line-number="300"
 		/>
 	</div>
 </template>
