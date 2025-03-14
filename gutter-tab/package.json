@@ -1,0 +1,26 @@
+{
+  "name": "vue-css-animations",
+  "version": "1.0.0",
+  "description": "A Vue 3 project for testing CSS animations using Vite.",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.2.1"
+  },
+  "keywords": [
+    "vue",
+    "css",
+    "animations",
+    "vite"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
