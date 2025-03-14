@@ -180,7 +180,7 @@ span {
     background-color: #1e1e1e;
 }
 .tab-icon.active::after {
-    background-color: #007ACC99;
+    background-color: #007ACC66;
     outline: 1px solid #007ACC; /* Added solid border for active state */
 }
 
