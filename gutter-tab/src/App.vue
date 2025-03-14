@@ -1,6 +1,6 @@
 <template>
 	<div id="app">
-		<TabExample 
+		<!-- <TabExample 
 			title="In viewport, Cursor inside suggestion"
 			start-position="center"
 			line-number="30000"
@@ -52,12 +52,19 @@
 			start-position="below"
 			start-state="unfocused"
 			line-number="300"
-		/>
+		/> -->
 		
 		<TabMultilineExample 
-			title="In viewport, Cursor inside suggestion"
+			title="Multiple lines | In viewport, Cursor inside suggestion"
 			start-position="center"
 			line-number="30000"
+		/>
+
+		<TabMultilineExample 
+			title="Multiple lines | In viewport, Cursor outside suggestion"
+			start-position="center"
+			start-state="pending"
+			line-number="3000"
 		/>
 	</div>
 </template>

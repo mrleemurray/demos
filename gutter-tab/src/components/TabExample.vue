@@ -4,7 +4,7 @@
 			<h4>{{ title }}</h4>
 		</div>
 		<div class="example">
-			<QuickMenu class="menu" v-if="showMenu"/>
+			<QuickMenu class="menu" v-if="showMenu && !isCompleted"/>
 			<div class="panel"></div>
 			<TabIcon 
 				:line-number="line" 
@@ -89,7 +89,6 @@ export default {
 	},
 	mounted() {
 		this.inBounds = this.startPosition === 'center';
-		console.log(this.lineNumber);
 	},
 	data() {
 		return {
@@ -109,9 +108,6 @@ export default {
 			}
 		},
 		handleTabHover() {
-			console.log('Tab hovered');
-			console.log(this.state);
-			console.log(this.position);
 			if (this.position === 'center' && this.state !== 'unfocused') {
 				this.showMenu = true;
 			}
@@ -173,7 +169,7 @@ tab-icon {
 	width: 600px;
 	height: 100px;
 	left: 48px;
-	background-color: #2d2d2d;
+	background-color: #252526;
 	border-radius: 4px;
 	display: flex;
 	align-items: center;
@@ -242,6 +238,7 @@ tab-icon {
     font-size: 12px;
     line-height: 19px;
     margin-right: 4px;
+	cursor: default;
 }
 
 .above {

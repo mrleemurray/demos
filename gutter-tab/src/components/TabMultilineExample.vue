@@ -4,7 +4,7 @@
 			<h4>{{ title }}</h4>
 		</div>
 		<div class="example">
-			<QuickMenu class="menu" v-if="showMenu"/>
+			<QuickMenu class="menu" v-if="showMenu && !isCompleted"/>
 			<div class="panel"></div>
 			<TabIcon 
 				:line-number="line" 
@@ -20,15 +20,27 @@
 			/>
 			<div v-if="inBounds" class="editor suggestion" @click="updateFocus">
 				<div v-if="!isCompleted" class="code-suggestion">
-					<div class="original-code">Original code<br>More code</div>
+					<div class="original-code">
+						 Original code<br>
+						 Original code<br>
+						 Original code<br>
+						 Original code<br>
+					</div>
 					<div class="updated-code"
 						@mouseenter="suggestionHover = true"
 						@mouseleave="suggestionHover = false"
 						@click="isCompleted = true; state = 'active'">
-					Updated code</div>
+						Updated code<br>
+						Updated code<br>
+						Updated code<br>
+						Updated code<br>
+					</div>
 				</div>
 				<div v-else class="code-suggestion completed">
-					Code has been updated
+					Code has been updated<br>
+					Code has been updated<br>
+					Code has been updated<br>
+					Code has been updated<br>
 				</div>
 				<FlashingCursor v-if="state !== 'unfocused'" :class="state === 'pending' ? 'above': ''"/>
 				<div class="line-numbers">
@@ -37,6 +49,11 @@
 					<span>{{ line }}</span>
 					<span>{{ line + 1 }}</span>
 					<span>{{ line + 2 }}</span>
+					<span>{{ line + 3 }}</span>
+					<span>{{ line + 4 }}</span>
+					<span>{{ line + 5 }}</span>
+					<span>{{ line + 6 }}</span>
+					<div v-if="inBounds && !isCompleted" :class="`affected-lines-indicator ${state}`"></div>
 				</div>
 			</div>
 			<div v-else class="editor" @click="updateFocus">
@@ -46,8 +63,6 @@
 					<FlashingCursor v-if="state !== 'unfocused'" :class="state === 'pending' ? 'above': ''"/>
 				</div>
 				<div class="line-numbers">
-					<span>{{ line - 4 }}</span>
-					<span>{{ line - 3 }}</span>
 					<span>{{ line - 2 }}</span>
 					<span>{{ line - 1 }}</span>
 					<span>{{ line }}</span>
@@ -55,6 +70,8 @@
 					<span>{{ line + 2 }}</span>
 					<span>{{ line + 3 }}</span>
 					<span>{{ line + 4 }}</span>
+					<span>{{ line + 5 }}</span>
+					<span>{{ line + 6 }}</span>
 				</div>
 			</div>
 		</div>
@@ -93,7 +110,6 @@ export default {
 	},
 	mounted() {
 		this.inBounds = this.startPosition === 'center';
-		console.log(this.lineNumber);
 	},
 	data() {
 		return {
@@ -113,9 +129,6 @@ export default {
 			}
 		},
 		handleTabHover() {
-			console.log('Tab hovered');
-			console.log(this.state);
-			console.log(this.position);
 			if (this.position === 'center' && this.state !== 'unfocused') {
 				this.showMenu = true;
 			}
@@ -141,7 +154,7 @@ tab-icon {
 .menu {
 	position: absolute;
 	z-index: 1000;
-	top: -42px;
+	top: -4px;
 	left: 0;
 }
 
@@ -169,15 +182,15 @@ tab-icon {
 	gap: 20px;
 	align-items: center;
 	position: relative;
-	height: 100px;
+	height: 175px;
 }
 
 .editor {
 	position: absolute;
 	width: 600px;
-	/* height: 100px; */
+	height: 175px;
 	left: 48px;
-	background-color: #2d2d2d;
+	background-color: #252526;
 	border-radius: 4px;
 	display: flex;
 	align-items: center;
@@ -187,11 +200,10 @@ tab-icon {
 
 .code-suggestion {
 	position: absolute;
-	margin-top: 4px;
+	margin-top: 57px;
 	width: 500px;
 	display: flex;
 	align-items: center;
-	/* justify-content: center; */
 	color: white;
 	font-family: 'Menlo', 'Courier New', Courier, monospace;
 	font-weight: 300;
@@ -234,10 +246,9 @@ tab-icon {
 
 .line-numbers {
 	position: absolute;
-    top: 0;
+    top: 4px;
     left: -63px;
     width: 60px;
-    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: end;
@@ -248,6 +259,7 @@ tab-icon {
     font-size: 12px;
     line-height: 19px;
     margin-right: 4px;
+	cursor: default;
 }
 
 .above {
@@ -273,5 +285,28 @@ h4 {
 	margin: 0;
 	font-weight: 300;
 	font-size: 14px;
+}
+
+.affected-lines-indicator {
+	position: absolute;
+	width: 100%;
+	height: 58px;
+	top: 92px;
+	background-color: #1e1e1e;
+}
+
+.affected-lines-indicator::before {
+	content: '';
+	position: absolute;
+	width: 1px;
+	height: calc(100% - 8px);
+	background-color: #858585;
+	top: 4px;
+	right: 12px;
+	transition: background-color 0.1s ease-in
+}
+
+.affected-lines-indicator.active::before {
+	background-color: #007ACC;
 }
 </style>
