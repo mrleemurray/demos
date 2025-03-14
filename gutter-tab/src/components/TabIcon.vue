@@ -87,10 +87,10 @@ export default {
                 return;
             }
 
-            if (this.state === 'active' || this.state === 'pending') {
+            // if (this.state === 'active' || this.state === 'pending') {
                 this.isCompleted = true;
                 this.$emit('completed');
-            }
+            // }
         }
     }
 };
