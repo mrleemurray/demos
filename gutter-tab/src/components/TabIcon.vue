@@ -68,9 +68,9 @@ export default {
             return this.position === 'above' || this.position === 'below';
         },
         currentIcon() {
-            if (this.position === 'above') {
+            if (this.position === 'below') {
                 return this.arrowDown;
-            } else if (this.position === 'below') {
+            } else if (this.position === 'above') {
                 return this.arrowUp;
             } else {
                 return this.keyboardTab;
