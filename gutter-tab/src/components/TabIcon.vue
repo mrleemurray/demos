@@ -176,15 +176,15 @@ span {
     transition: background-color 0.1s ease-in, outline 0.1s ease-in;
 }
 
-.tab-icon.active::before {
+.tab-icon.pending::before {
     background-color: #1e1e1e;
 }
-.tab-icon.active::after {
+.tab-icon.pending::after {
     background-color: #007ACC66;
     outline: 1px solid #007ACC; /* Added solid border for active state */
 }
 
-.tab-icon.pending::before {
+.tab-icon.active::before {
     background-color: #007ACC;
 }
 
