@@ -23,6 +23,7 @@
 			start-position="above"
 			line-number="30"
 		/>
+
 		<TabExample 
 			title="Above viewport, Cursor outside suggestion"
 			start-position="above"
@@ -109,6 +110,7 @@
 			start-state="unfocused"
 			line-number="300"
 		/>
+		
 	</div>
 </template>
 

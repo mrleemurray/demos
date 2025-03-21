@@ -1,12 +1,14 @@
 <template>
-	<div id="container">
+	<div id="container" @keydown="handleKeydown" tabindex="0">
 		<div class="title-container" @click="updateFocus">
 			<h4>{{ title }}</h4>
 		</div>
 		<div class="example">
 			<QuickMenu class="menu" v-if="showMenu && !isCompleted"/>
+			<!-- <PromptMenu class="menu prompt" v-if="showPromptMenu && !isCompleted"/> -->
 			<div class="panel"></div>
 			<TabIcon 
+				:key="tabIconKey" 
 				:line-number="line" 
 				:start-position="position"
 				:start-state="state"
@@ -21,9 +23,9 @@
 			<div v-if="inBounds" class="editor suggestion" @click="updateFocus">
 				<div v-if="!isCompleted" class="code-suggestion">
 					<div class="original-code">Original code</div>
-					<div class="updated-code"
-						@mouseenter="suggestionHover = true"
-						@mouseleave="suggestionHover = false"
+					<div :class="`updated-code`"
+						@mouseenter="handleUpdatedCodeHover()"
+						@mouseleave="handleUpdatedCodeMouseLeave()"
 						@click="isCompleted = true; state = 'active'">
 					Updated code</div>
 				</div>
@@ -54,6 +56,7 @@
 				</div>
 			</div>
 		</div>
+		<button v-html="refresh" class="reset-button" @click="resetState"></button>
 	</div>
 </template>
 
@@ -61,6 +64,8 @@
 import FlashingCursor from "./FlashingCursor.vue";
 import TabIcon from "./TabIcon.vue";
 import QuickMenu from "./QuickMenu.vue";
+import refresh from '../assets/icons/refresh.svg?raw';
+import PromptMenu from "./PromptMenu.vue";
 
 export default {
 	name: "TabExample",
@@ -68,6 +73,7 @@ export default {
 		TabIcon,
 		FlashingCursor,
 		QuickMenu,
+		PromptMenu,
 	},
 	props: {
 		title: {
@@ -98,7 +104,11 @@ export default {
 			state: this.startState,
 			position: this.startPosition,
 			showMenu: false,
+			showPromptMenu: false,
 			line: parseInt(this.lineNumber),
+			tabIconKey: 0,
+			refresh: refresh,
+			promptMenuTimer: null // Add a variable to store the timer ID
 		};
 	},
 	methods: {
@@ -111,7 +121,50 @@ export default {
 			if (this.position === 'center' && this.state !== 'unfocused') {
 				this.showMenu = true;
 			}
-		}
+		},
+		handleUpdatedCodeHover() {
+			this.suggestionHover = true;
+			// Store the timer ID in promptMenuTimer
+			this.promptMenuTimer = setTimeout(() => {
+				this.showPromptMenu = true;
+			}, 500);
+		},
+		handleUpdatedCodeMouseLeave() {
+			this.suggestionHover = false;
+			this.showPromptMenu = false;
+			// Cancel the timer using clearTimeout
+			if (this.promptMenuTimer) {
+				clearTimeout(this.promptMenuTimer);
+				this.promptMenuTimer = null; // Reset the timer ID
+			}
+		},
+		// Reset state method
+        resetState() {
+            this.state = this.startState;
+            this.position = this.startPosition;
+            this.isCompleted = false;
+            this.inBounds = this.startPosition === 'center';
+            this.showMenu = false;
+            this.suggestionHover = false;
+			this.tabIconKey++; 
+        },
+
+		handleKeydown(event) {
+            if (event.key === 'Tab') {
+                event.preventDefault(); // Prevent default tab behavior if needed
+                // Add your logic here
+				if (this.state === 'pending') {
+					this.state = 'active';
+					this.position = 'center';
+					return;
+				}
+
+				if (this.state === 'active') {
+					this.isCompleted = true;
+					return;
+				}
+            }
+        }
 	},
 };
 </script>
@@ -133,8 +186,12 @@ tab-icon {
 .menu {
 	position: absolute;
 	z-index: 1000;
-	top: -42px;
+	top: -22px;
 	left: 0;
+}
+
+.prompt {
+	top: -22px;
 }
 
 .panel {
@@ -264,5 +321,43 @@ h4 {
 	margin: 0;
 	font-weight: 300;
 	font-size: 14px;
+}
+
+.reset-button {
+	position: absolute;
+	top: -2px;
+	left: -32px;
+	width: 24px;
+	height: 24px;
+	background-color: transparent;
+	border: none;
+	cursor: pointer;
+	color: #ffffff66;
+}
+
+.reset-button:hover {
+	color: #ffffff;
+}
+
+@keyframes colorPulse {
+    0% {
+        background-color: #9BB95533;
+		border: 1px solid #9BB95566;
+		border-left: none;
+    }
+	50% {
+		background-color: #9BB95566;
+		border: 1px solid #9BB95599;
+		border-left: none;
+	}
+    100% {
+        background-color: #9BB95533;
+		border: 1px solid #9BB95566;
+		border-left: none;
+    }
+}
+
+.color-pulse {
+    animation: colorPulse 0.5s ease-in-out;
 }
 </style>

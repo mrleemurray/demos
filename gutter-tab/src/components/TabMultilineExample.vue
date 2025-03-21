@@ -7,6 +7,7 @@
 			<QuickMenu class="menu" v-if="showMenu && !isCompleted"/>
 			<div class="panel"></div>
 			<TabIcon 
+				:key="tabIconKey" 
 				:line-number="line" 
 				:start-position="position"
 				:start-state="state"
@@ -16,7 +17,7 @@
 				@completed="isCompleted = true; state = 'active'"
 				@inBounds="inBounds = true"
 				@active="state = 'active'; position = 'center'"
-				@mouseenter="handleTabHover()"
+				@mouseenter="handleTabHover();"
 				@mouseleave="showMenu = false"
 			/>
 			<div v-if="inBounds" class="editor suggestion" @click="updateFocus">
@@ -28,8 +29,8 @@
 						 Original code<br>
 					</div>
 					<div class="updated-code"
-						@mouseenter="suggestionHover = true"
-						@mouseleave="suggestionHover = false"
+						@mouseenter="suggestionHover = true; showMenu = true"
+						@mouseleave="suggestionHover = false; showMenu = false"
 						@click="isCompleted = true; state = 'active'">
 						Updated code<br>
 						Updated code<br>
@@ -76,6 +77,7 @@
 				</div>
 			</div>
 		</div>
+		<button v-html="refresh" class="reset-button" @click="resetState"></button>
 	</div>
 </template>
 
@@ -83,6 +85,7 @@
 import FlashingCursor from "./FlashingCursor.vue";
 import TabIcon from "./TabIcon.vue";
 import QuickMenu from "./QuickMenu.vue";
+import refresh from '../assets/icons/refresh.svg?raw';
 
 export default {
 	name: "TabMultilineExample",
@@ -121,6 +124,8 @@ export default {
 			position: this.startPosition,
 			showMenu: false,
 			line: parseInt(this.lineNumber),
+			tabIconKey: 0,
+			refresh: refresh,
 		};
 	},
 	methods: {
@@ -133,7 +138,17 @@ export default {
 			if (this.position === 'center' && this.state !== 'unfocused') {
 				this.showMenu = true;
 			}
-		}
+		},
+		// Reset state method
+        resetState() {
+            this.state = this.startState;
+            this.position = this.startPosition;
+            this.isCompleted = false;
+            this.inBounds = this.startPosition === 'center';
+            this.showMenu = false;
+            this.suggestionHover = false;
+			this.tabIconKey++; 
+        }
 	},
 };
 </script>
@@ -313,5 +328,21 @@ h4 {
 
 .affected-lines-indicator.unfocused::before {
 	background-color: #3A3D41;
+}
+
+.reset-button {
+	position: absolute;
+	top: -2px;
+	left: -32px;
+	width: 24px;
+	height: 24px;
+	background-color: transparent;
+	border: none;
+	cursor: pointer;
+	color: #ffffff66;
+}
+
+.reset-button:hover {
+	color: #ffffff;
 }
 </style>

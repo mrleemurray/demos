@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="`tab-icon ${state} ${computedIsCollapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''} ${position} ${suggestionHover ? 'pulse-outline' : ''} ${multiLine ? 'multiline' : ''}`"
+        :class="`tab-icon ${state} ${computedIsCollapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''} ${position} ${suggestionHover ? 'pulse-outline' : ''} ${isPulsing ? 'pulse-outline-infinite' : ''} ${multiLine ? 'multiline' : ''}`"
         @mouseenter="isHovered = true" 
         @mouseleave="isHovered = false" 
         @click="handleClick"
@@ -53,12 +53,19 @@ export default {
             keyboardTab: keyboardTab,
             arrowUp: arrowUp,
             arrowDown: arrowDown,
-            check: check
+            check: check,
+            pulseActive: false, // Controls the pulse animation
+            pulseTimer: null, // Stores the timer ID
+            pulseCount: 0 // Tracks the number of pulses
         };
     },
     mounted() {
-        this.state = this.startState;
+        this.stateNew = this.startState;
         this.position = this.startPosition;
+
+        if (this.position === 'center' && this.state === 'active') {
+            this.triggerPulseAnimation(); // Start the pulse animation when in center position
+        }
     },
     watch: {
         startState(newState) {
@@ -66,10 +73,16 @@ export default {
         },
         position(newPosition) {
             this.position = newPosition;
+            if (newPosition === 'center') {
+                this.triggerPulseAnimation(); // Start the pulse animation when in center position
+            } else {
+                this.pulseActive = false; // Stop the pulse animation when not in center position
+                clearInterval(this.pulseTimer); // Clear the timer
+            }
         },
         completed(newCompleted) {
             this.isCompleted = newCompleted;
-        }
+        },
     },
     computed: {
         computedIsCollapsed() {
@@ -83,6 +96,12 @@ export default {
             } else {
                 return this.keyboardTab;
             }
+        },
+        isPulsing() {
+            if (this.state === 'active' && this.pulseActive && this.position === 'center') {
+                return true; // Pulse animation is active
+            }
+            return false; // Pulse animation is not active
         }
     },
     methods: {
@@ -95,10 +114,27 @@ export default {
                 return;
             }
 
-            // if (this.state === 'active' || this.state === 'pending') {
-                this.isCompleted = true;
-                this.$emit('completed');
-            // }
+            this.isCompleted = true;
+            this.$emit('completed');
+        },
+        triggerPulseAnimation() {
+            this.pulseCount = 0; // Reset the pulse count
+            this.pulseActive = true; // Start the animation
+
+            // Trigger the animation every 3 seconds, up to 3 times
+            this.pulseTimer = setInterval(() => {
+                this.pulseCount++;
+                if (this.pulseCount >= 3) {
+                    clearInterval(this.pulseTimer); // Stop the timer after 3 pulses
+                    this.pulseActive = false; // Stop the animation
+                }
+            }, 2000);
+        }
+    },
+    beforeDestroy() {
+        // Clear the timer if the component is destroyed
+        if (this.pulseTimer) {
+            clearInterval(this.pulseTimer);
         }
     }
 };
@@ -228,8 +264,27 @@ span {
     }
 }
 
+@keyframes pulseOutlineDelayed {
+    0% {
+        outline: 2px solid #007ACC;
+        outline-offset: -1px;
+    }
+    33% {
+        outline: 1px solid #007ACC00;
+        outline-offset: 12px;
+    }
+    100% {
+        outline: 1px solid #007ACC00;
+        outline-offset: 12px;
+    }
+}
+
 /* Apply the animation to the .pulse-outline class */
 .pulse-outline {
     animation: pulseOutline 0.7s ease-out;
+}
+
+.pulse-outline-infinite {
+    animation: pulseOutlineDelayed 2.0s ease-out infinite 0.2s;
 }
 </style>
