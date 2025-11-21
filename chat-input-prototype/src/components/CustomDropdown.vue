@@ -55,7 +55,10 @@ if (typeof window !== 'undefined') {
       >
         <i v-if="option.value === modelValue" class="codicon codicon-check"></i>
         <span class="item-spacer" v-else></span>
-        <span>{{ option.label }}</span>
+        <span class="item-label">{{ option.label }}</span>
+        <span v-if="option.costMultiplier !== undefined && option.contextLimit !== undefined" class="item-metadata">
+          {{ option.costMultiplier }}x • {{ option.contextLimit }}k
+        </span>
       </div>
     </div>
   </div>
@@ -92,11 +95,11 @@ if (typeof window !== 'undefined') {
 
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  bottom: calc(100% + 4px);
   left: 0;
   min-width: 200px;
   width: max-content;
-  background: var(--vscode-dropdown-background, #3c3c3c);
+  background: var(--vscode-dropdown-background, #1f1f1f);
   border: 1px solid var(--vscode-dropdown-border, #454545);
   border-radius: 4px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
@@ -108,10 +111,21 @@ if (typeof window !== 'undefined') {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 8px 6px 4px;
   color: var(--vscode-dropdown-foreground, #cccccc);
   font-size: 13px;
   cursor: pointer;
+}
+
+.item-label {
+  flex: 1;
+}
+
+.item-metadata {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #999999);
+  opacity: 0.7;
 }
 
 .dropdown-item:hover {

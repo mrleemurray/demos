@@ -5,6 +5,7 @@ import CustomDropdown from './CustomDropdown.vue'
 
 const message = ref('')
 const textarea = ref(null)
+const chatHistoryContainer = ref(null)
 const isFocused = ref(false)
 const chatMode = ref('ask')
 const selectedModel = ref('claude')
@@ -60,10 +61,10 @@ const chatModes = [
   { value: 'edit', label: 'Edit' }
 ]
 const models = [
-  { value: 'gpt', label: 'GPT-4', contextLimit: 32 },
-  { value: 'claude', label: 'Claude Sonnet 4.5', contextLimit: 64 },
-  { value: 'gemini', label: 'Gemini', contextLimit: 128 },
-  { value: 'llama', label: 'Llama', contextLimit: 256 }
+  { value: 'gpt', label: 'GPT-4', contextLimit: 32, costMultiplier: 1.5 },
+  { value: 'claude', label: 'Claude Sonnet 4.5', contextLimit: 64, costMultiplier: 1 },
+  { value: 'gemini', label: 'Gemini', contextLimit: 128, costMultiplier: 0.3 },
+  { value: 'llama', label: 'Llama', contextLimit: 256, costMultiplier: 0.1 }
 ]
 
 const contextLimit = computed(() => {
@@ -76,6 +77,14 @@ const handleInput = () => {
     textarea.value.style.height = 'auto'
     textarea.value.style.height = textarea.value.scrollHeight + 'px'
   }
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatHistoryContainer.value) {
+      chatHistoryContainer.value.scrollTop = chatHistoryContainer.value.scrollHeight
+    }
+  })
 }
 
 const animateContextIncrease = (amount) => {
@@ -142,16 +151,19 @@ const animateContextIncrease = (amount) => {
     tick()
   } else if (animationStyle.value === 'rpg') {
     displayedContext.value = contextUsed.value
-    floatingNumbers.value.push({
-      id: Date.now(),
-      value: amount,
-      opacity: 1,
-      y: 0
-    })
     
-    setTimeout(() => {
-      floatingNumbers.value = floatingNumbers.value.filter(n => n.id !== Date.now())
-    }, 1500)
+    if (amount > 0) {
+      floatingNumbers.value.push({
+        id: Date.now(),
+        value: amount,
+        opacity: 1,
+        y: 0
+      })
+      
+      setTimeout(() => {
+        floatingNumbers.value = floatingNumbers.value.filter(n => n.id !== Date.now())
+      }, 1500)
+    }
   }
 }
 
@@ -234,7 +246,9 @@ const simulateAgentResponse = () => {
     text: '',
     continuationText: '',
     isStreaming: true,
-    widgets: []
+    widgets: [],
+    model: selectedModel.value,
+    tokens: 0
   })
   
   const fullResponse = "I'll help you build that feature. Let me analyze the codebase first."
@@ -243,29 +257,37 @@ const simulateAgentResponse = () => {
     { delay: 1200, label: 'Searching for similar patterns', icon: 'search', cost: 1.2 },
     { delay: 1500, label: 'Analyzing dependencies', icon: 'graph', cost: 0.5 }
   ]
-  const finalText = '\n\nNow I can implement the changes you requested.'
+  const finalText = 'Now I can implement the changes you requested.'
   
-  let currentIndex = 0
+  // Split into word chunks
+  const responseWords = fullResponse.split(' ')
+  const finalWords = finalText.split(' ')
+  
+  let currentWordIndex = 0
   let operationIndex = 0
   let widgetCompleteCount = 0
   
   const typeText = () => {
-    if (currentIndex < fullResponse.length) {
-      streamedText.value += fullResponse[currentIndex]
-      currentIndex++
+    if (currentWordIndex < responseWords.length) {
+      streamedText.value += (currentWordIndex > 0 ? ' ' : '') + responseWords[currentWordIndex]
+      currentWordIndex++
       
       // Update agent message in history
       const agentMsg = chatHistory.value.find(m => m.id === agentMessageId)
-      if (agentMsg) agentMsg.text = streamedText.value
+      if (agentMsg) {
+        agentMsg.text = streamedText.value
+        scrollToBottom()
+      }
       
       // Add small cost for streaming response tokens
-      if (currentIndex % 10 === 0) {
+      if (currentWordIndex % 3 === 0) {
         const addedAmount = 0.1
         contextUsed.value += addedAmount
         animateContextIncrease(addedAmount)
+        if (agentMsg) agentMsg.tokens += addedAmount
       }
       
-      setTimeout(typeText, 15)
+      setTimeout(typeText, 80)
     } else if (operationIndex < operations.length) {
       const operation = operations[operationIndex]
       operationIndex++
@@ -282,6 +304,7 @@ const simulateAgentResponse = () => {
             icon: operation.icon,
             status: 'loading'
           })
+          scrollToBottom()
         }
         
         // Complete widget after delay
@@ -295,20 +318,22 @@ const simulateAgentResponse = () => {
               // If all widgets are complete, add final text
               if (widgetCompleteCount === operations.length) {
                 setTimeout(() => {
-                  let finalIndex = 0
+                  let finalWordIndex = 0
                   const typeFinalText = () => {
-                    if (finalIndex < finalText.length) {
-                      const char = finalText[finalIndex]
-                      finalIndex++
+                    if (finalWordIndex < finalWords.length) {
+                      const word = finalWords[finalWordIndex]
+                      finalWordIndex++
                       if (agentMsg) {
-                        agentMsg.continuationText = (agentMsg.continuationText || '') + char
+                        agentMsg.continuationText = (agentMsg.continuationText || '') + (finalWordIndex > 1 ? ' ' : '') + word
+                        scrollToBottom()
                       }
-                      setTimeout(typeFinalText, 15)
+                      setTimeout(typeFinalText, 80)
                     } else {
                       // Add final cost
                       const addedAmount = 0.3
                       contextUsed.value += addedAmount
                       animateContextIncrease(addedAmount)
+                      if (agentMsg) agentMsg.tokens += addedAmount
                       
                       setTimeout(() => {
                         isStreaming.value = false
@@ -328,6 +353,7 @@ const simulateAgentResponse = () => {
         const addedAmount = operation.cost
         contextUsed.value += addedAmount
         animateContextIncrease(addedAmount)
+        if (agentMsg) agentMsg.tokens += addedAmount
         
         typeText()
       }, operation.delay)
@@ -340,25 +366,45 @@ const simulateAgentResponse = () => {
 
 <template>
   <div class="chat-input-container">
-    <div class="chat-history">
-      <div v-for="msg in chatHistory" :key="msg.id" class="chat-message" :class="msg.type">
+    <div class="chat-wrapper">
+      <div ref="chatHistoryContainer" class="chat-history">
+        <div v-for="msg in chatHistory" :key="msg.id" class="chat-message" :class="msg.type">
         <div class="message-text">
           {{ msg.text }}
         </div>
         <div v-if="msg.widgets && msg.widgets.length > 0" class="widgets-container">
           <div v-for="widget in msg.widgets" :key="widget.id" class="operation-widget" :class="widget.status">
-            <i class="codicon" :class="`codicon-${widget.icon}`"></i>
-            <span class="widget-label">{{ widget.label }}</span>
             <div v-if="widget.status === 'loading'" class="widget-spinner">
               <i class="codicon codicon-loading codicon-modifier-spin"></i>
             </div>
             <div v-else class="widget-check">
               <i class="codicon codicon-check"></i>
             </div>
+            <span class="widget-label">{{ widget.status === 'loading' ? 'Working...' : widget.label }}</span>
           </div>
         </div>
         <div v-if="msg.continuationText" class="message-text continuation-text">
           {{ msg.continuationText }}
+        </div>
+        <div v-if="msg.type === 'agent'" class="message-feedback">
+          <div class="feedback-actions">
+            <button class="feedback-btn" title="Regenerate" @click="() => console.log('Regenerate', msg.id)">
+              <i class="codicon codicon-refresh"></i>
+            </button>
+            <button class="feedback-btn" title="Undo" @click="() => console.log('Undo', msg.id)">
+              <i class="codicon codicon-discard"></i>
+            </button>
+            <button class="feedback-btn" title="Helpful" @click="() => console.log('Thumbs up', msg.id)">
+              <i class="codicon codicon-thumbsup"></i>
+            </button>
+            <button class="feedback-btn" title="Not helpful" @click="() => console.log('Thumbs down', msg.id)">
+              <i class="codicon codicon-thumbsdown"></i>
+            </button>
+          </div>
+          <div class="feedback-metadata">
+            <span class="model-name">{{ models.find(m => m.value === msg.model)?.label || 'Claude Sonnet 4.5' }} • {{ models.find(m => m.value === msg.model)?.costMultiplier || 1 }}x • </span>
+            <span class="token-count">{{ msg.tokens?.toFixed(1) || '0.0' }}k tokens</span>
+          </div>
         </div>
       </div>
     </div>
@@ -380,30 +426,46 @@ const simulateAgentResponse = () => {
           </div>
         </div>
         
-        <div 
-          class="context-info-wrapper"
-          @mouseenter="isContextHovered = true"
-          @mouseleave="isContextHovered = false"
-        >
+        <div class="context-info-wrapper">
           <div class="context-info">
-            <span v-if="pendingContext > 0">(+{{ pendingContext.toFixed(1) }}k) </span>
-            <span v-if="!isSpinning" :style="{ color: contextUsedColor }" class="context-value">
+            <span 
+              v-if="pendingContext > 0"
+              @mouseenter="isContextHovered = true"
+              @mouseleave="isContextHovered = false"
+            >(+{{ pendingContext.toFixed(1) }}k) </span>
+            <span 
+              v-if="!isSpinning" 
+              :style="{ color: contextUsedColor }" 
+              class="context-value"
+              @mouseenter="isContextHovered = true"
+              @mouseleave="isContextHovered = false"
+            >
               {{ displayedContext.toFixed(1) }}k
               <span v-for="num in floatingNumbers" :key="num.id" class="floating-number">
                 +{{ num.value.toFixed(1) }}k
               </span>
             </span>
-            <span v-else class="spinner-container">
-              <span 
-                v-for="digit in spinnerDigits" 
-                :key="digit.key"
-                class="spinner-digit"
-                :class="digit.position"
-              >
-                {{ digit.value }}k
-              </span>
+            <span 
+              v-else 
+              class="spinner-container"
+              @mouseenter="isContextHovered = true"
+              @mouseleave="isContextHovered = false"
+            >
+              <span>
+                <span 
+                  v-for="digit in spinnerDigits" 
+                  :key="digit.key"
+                  class="spinner-digit"
+                  :class="digit.position"
+                >
+                  {{ digit.value }}
+                </span>
+              </span>k
             </span>
-            /{{ contextLimit }}k
+            <span
+              @mouseenter="isContextHovered = true"
+              @mouseleave="isContextHovered = false"
+            >/{{ contextLimit }}k</span>
           </div>
           
           <div v-if="isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
@@ -411,10 +473,26 @@ const simulateAgentResponse = () => {
               <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
             </div>
             <div class="tooltip-title">
-              Nearing input token limit • {{ Math.round(contextUsagePercent) }}% used
+              <template v-if="contextUsagePercent >= 100">
+                Token limit reached
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                Nearing input token limit • {{ Math.round(contextUsagePercent) }}% used
+              </template>
+              <template v-else>
+                Tokens used • {{ Math.round(contextUsagePercent) }}%
+              </template>
             </div>
             <div class="tooltip-subtitle">
-              Start a new session or change models to increase limit.
+              <template v-if="contextUsagePercent >= 100">
+                Start a new session or change models to continue.
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                Start a new session or change models to increase limit.
+              </template>
+              <template v-else>
+                Adding files and large requests will consume more tokens
+              </template>
             </div>
             <div class="tooltip-arrow" :style="{ borderTopColor: tooltipBackground }"></div>
           </div>
@@ -450,8 +528,10 @@ const simulateAgentResponse = () => {
         
         <div class="action-buttons">
           <button 
-            class="forward-button" 
+            class="forward-button"
+            :class="{ disabled: isEmpty }"
             @click="() => console.log('Forward clicked')"
+            :disabled="isEmpty"
             title="Forward"
           >
             <i class="codicon codicon-forward"></i>
@@ -468,6 +548,7 @@ const simulateAgentResponse = () => {
           </button>
         </div>
       </div>
+    </div>
     </div>
     
     <div class="animation-controls">
@@ -501,26 +582,73 @@ const simulateAgentResponse = () => {
   flex-direction: column;
 }
 
+.chat-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  overflow: hidden;
+  padding: 16px;
+  gap: 8px;
+}
+
 .chat-history {
   flex: 1;
   min-height: 0;
-  margin-bottom: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  scroll-behavior: smooth;
+  padding: 8px;
+}
+
+.chat-history::-webkit-scrollbar {
+  width: 14px;
+}
+
+.chat-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, #79797966);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 7px;
+}
+
+.chat-history::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, #646464b3);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 7px;
+}
+
+.chat-history::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground, #bfbfbf66);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 7px;
 }
 
 .chat-message {
   margin-bottom: 12px;
   padding: 10px 12px;
   border-radius: 5px;
-  max-width: 80%;
+  
   align-self: flex-start;
 }
 
 .chat-message.user {
   background: var(--vscode-input-background, #264f784d);
   align-self: flex-end;
+  max-width: 80%;
+}
+
+.chat-message.agent {
+    width: 524px;
 }
 
 .message-text {
@@ -532,6 +660,70 @@ const simulateAgentResponse = () => {
   word-wrap: break-word;
 }
 
+.message-text.continuation-text {
+  margin-top: 16px;
+}
+
+.message-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  opacity: 0;
+}
+
+.chat-message:hover .message-feedback {
+  opacity: 1;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.feedback-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-foreground, #cccccc);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.feedback-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, #505050);
+  opacity: 1;
+}
+
+.feedback-btn .codicon {
+  font-size: 14px;
+}
+
+.feedback-metadata {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--vscode-descriptionForeground, #999999);
+}
+
+.model-name {
+  opacity: 0.8;
+}
+
+.token-count {
+  opacity: 0.6;
+}
+
 .chat-input-wrapper {
   position: relative;
   display: flex;
@@ -539,12 +731,8 @@ const simulateAgentResponse = () => {
   padding: 6px;
   background: var(--vscode-input-background, #3c3c3c);
   border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 5px;
   flex-shrink: 0;
-}
-
-.chat-input-wrapper.focused {
-  border-color: var(--vscode-focusBorder, #007acc);
+  border-radius: 5px;
 }
 
 .attachment-row {
@@ -574,8 +762,10 @@ const simulateAgentResponse = () => {
   border: 1px solid var(--vscode-input-border, #FFFFFF22);
   border-radius: 5px;
   font-size: 11px;
+  height: 16px;
   color: var(--vscode-input-foreground, #cccccc);
   cursor: default;
+  user-select: none;
 }
 
 .file-chip:hover {
@@ -640,11 +830,18 @@ const simulateAgentResponse = () => {
 }
 
 .spinner-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  vertical-align: top;
+  line-height: 13px;
+}
+
+.spinner-container > span:first-child {
   position: relative;
   display: inline-block;
   height: 13px;
   overflow: hidden;
-  vertical-align: top;
   min-width: 30px;
   line-height: 13px;
 }
@@ -701,7 +898,7 @@ const simulateAgentResponse = () => {
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
-  width: 320px;
+  width: 325px;
   padding: 8px;
   background: var(--vscode-editorHoverWidget-background, #2d2d30);
   border-radius: 5px;
@@ -814,9 +1011,9 @@ const simulateAgentResponse = () => {
   align-items: center;
 }
 
-.send-button.disabled {
+.send-button.disabled,
+.forward-button.disabled {
   opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .chat-textarea {
@@ -865,7 +1062,7 @@ const simulateAgentResponse = () => {
 
 .floating-number {
   position: absolute;
-  top: -18px;
+  top: -12px;
   left: 0;
   transform: translateX(-100%);
   font-size: 12px;
@@ -873,7 +1070,7 @@ const simulateAgentResponse = () => {
   color: #4ec9b0;
   pointer-events: none;
   animation: float-up 1.5s ease-out forwards;
-  text-shadow: 0 0 8px rgba(78, 201, 176, 0.6);
+  /* text-shadow: 0 0 8px rgba(78, 201, 176, 0.6); */
   white-space: nowrap;
 }
 
@@ -891,36 +1088,27 @@ const simulateAgentResponse = () => {
 .widgets-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   margin-top: 8px;
 }
 
 .operation-widget {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: var(--vscode-editor-background, #1e1e1e);
-  border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 4px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 0px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 13px;
   color: var(--vscode-foreground, #cccccc);
-  transition: all 0.2s ease;
-}
-
-.operation-widget.loading {
-  border-color: var(--vscode-focusBorder, #007acc);
-  background: color-mix(in srgb, var(--vscode-focusBorder, #007acc) 5%, var(--vscode-editor-background, #1e1e1e));
-}
-
-.operation-widget.complete {
-  border-color: #4ec9b0;
-  background: color-mix(in srgb, #4ec9b0 5%, var(--vscode-editor-background, #1e1e1e));
+  opacity: 0.7;
 }
 
 .widget-label {
   flex: 1;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
 }
 
 .widget-spinner,
@@ -933,11 +1121,13 @@ const simulateAgentResponse = () => {
 }
 
 .widget-spinner .codicon-loading {
-  color: var(--vscode-focusBorder, #007acc);
+  color: var(--vscode-foreground, #cccccc);
+  font-size: 14px;
 }
 
 .widget-check .codicon-check {
-  color: #4ec9b0;
+  color: var(--vscode-foreground, #cccccc);
+  font-size: 14px;
 }
 
 .animation-controls {
