@@ -39,3 +39,4 @@ jobs:
           publish_dir: ./chat-input-prototype/dist
           publish_branch: gh-pages
           destination_dir: chat-input-prototype
+          keep_files: false
