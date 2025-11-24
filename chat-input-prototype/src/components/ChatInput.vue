@@ -9,10 +9,15 @@ const chatHistoryContainer = ref(null)
 const isFocused = ref(false)
 const chatMode = ref('ask')
 const selectedModel = ref('claude')
-const contextUsed = ref(12.3)
 const isContextHovered = ref(false)
 const pendingContext = ref(0)
 const attachedFiles = ref([])
+const systemPromptTokens = ref(4)
+const systemToolsTokens = ref(0)
+const mcpToolsTokens = ref(2.5)
+const messagesTextTokens = ref(3.2)
+const messagesFilesTokens = ref(2.6)
+const contextUsed = computed(() => totalTokensUsed.value)
 const animationStyle = ref('instant')
 const displayedContext = ref(12.3)
 const floatingNumbers = ref([])
@@ -21,6 +26,11 @@ const isSpinning = ref(false)
 const isStreaming = ref(false)
 const streamedText = ref('')
 const chatHistory = ref([])
+const widgetAnimations = ref({})
+const hoveredWidget = ref(null)
+const chatTitle = ref('Build dark mode toggle')
+const isEditingTitle = ref(false)
+const titleInput = ref(null)
 
 let animationFrame = null
 
@@ -42,15 +52,10 @@ const progressBarColor = computed(() => {
   const percent = contextUsagePercent.value
   if (percent > 90) return '#f48771'
   if (percent > 50) return '#cca700'
-  return '#0e70c0'
+  return '#cccccc'
 })
 
 const tooltipBackground = computed(() => {
-  const percent = contextUsagePercent.value
-  if (percent > 50) {
-    const color = percent > 90 ? '#f48771' : '#cca700'
-    return `color-mix(in srgb, ${color} 10%, #2d2d30)`
-  }
   return '#2d2d30'
 })
 
@@ -70,6 +75,10 @@ const models = [
 const contextLimit = computed(() => {
   const model = models.find(m => m.value === selectedModel.value)
   return model ? model.contextLimit : 64
+})
+
+const totalTokensUsed = computed(() => {
+  return systemPromptTokens.value + systemToolsTokens.value + mcpToolsTokens.value + messagesTextTokens.value + messagesFilesTokens.value
 })
 
 const handleInput = () => {
@@ -167,6 +176,75 @@ const animateContextIncrease = (amount) => {
   }
 }
 
+const animateWidgetCost = (widgetId, targetCost) => {
+  if (animationStyle.value === 'instant') {
+    if (!widgetAnimations.value[widgetId]) {
+      widgetAnimations.value[widgetId] = { displayed: 0 }
+    }
+    widgetAnimations.value[widgetId].displayed = targetCost
+  } else if (animationStyle.value === 'counter') {
+    if (!widgetAnimations.value[widgetId]) {
+      widgetAnimations.value[widgetId] = { displayed: 0 }
+    }
+    const start = widgetAnimations.value[widgetId].displayed
+    const end = targetCost
+    const duration = 800
+    const startTime = Date.now()
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const easeOutQuad = 1 - (1 - progress) * (1 - progress)
+      
+      widgetAnimations.value[widgetId].displayed = start + (end - start) * easeOutQuad
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+    
+    animate()
+  } else if (animationStyle.value === 'spinner') {
+    if (!widgetAnimations.value[widgetId]) {
+      widgetAnimations.value[widgetId] = { displayed: 0, digits: [] }
+    }
+    const start = widgetAnimations.value[widgetId].displayed
+    const end = targetCost
+    const amount = end - start
+    const steps = Math.min(Math.ceil(amount * 10), 5)
+    const duration = 150
+    let currentStep = 0
+    
+    const tick = () => {
+      currentStep++
+      const progress = currentStep / steps
+      const newValue = start + (end - start) * progress
+      
+      widgetAnimations.value[widgetId].digits = [
+        { value: widgetAnimations.value[widgetId].displayed.toFixed(1), class: 'old' },
+        { value: newValue.toFixed(1), class: 'new' }
+      ]
+      
+      widgetAnimations.value[widgetId].displayed = newValue
+      
+      if (currentStep < steps) {
+        setTimeout(tick, duration)
+      } else {
+        setTimeout(() => {
+          widgetAnimations.value[widgetId].digits = []
+        }, duration)
+      }
+    }
+    
+    tick()
+  } else if (animationStyle.value === 'rpg') {
+    if (!widgetAnimations.value[widgetId]) {
+      widgetAnimations.value[widgetId] = { displayed: 0 }
+    }
+    widgetAnimations.value[widgetId].displayed = targetCost
+  }
+}
+
 const handleSend = () => {
   if (!isEmpty.value) {
     const userMessage = message.value
@@ -182,7 +260,7 @@ const handleSend = () => {
     
     // Add pending context to total
     const addedAmount = pendingContext.value
-    contextUsed.value += pendingContext.value
+    messagesTextTokens.value += pendingContext.value
     pendingContext.value = 0
     
     // Animate the increase
@@ -282,7 +360,7 @@ const simulateAgentResponse = () => {
       // Add small cost for streaming response tokens
       if (currentWordIndex % 3 === 0) {
         const addedAmount = 0.1
-        contextUsed.value += addedAmount
+        messagesTextTokens.value += addedAmount
         animateContextIncrease(addedAmount)
         if (agentMsg) agentMsg.tokens += addedAmount
       }
@@ -298,12 +376,15 @@ const simulateAgentResponse = () => {
         // Add widget
         if (agentMsg) {
           agentMsg.widgets = agentMsg.widgets || []
+          const widgetId = Date.now() + operationIndex
           agentMsg.widgets.push({
-            id: Date.now() + operationIndex,
+            id: widgetId,
             label: operation.label,
             icon: operation.icon,
-            status: 'loading'
+            status: 'loading',
+            cost: operation.cost
           })
+          animateWidgetCost(widgetId, operation.cost)
           scrollToBottom()
         }
         
@@ -331,7 +412,7 @@ const simulateAgentResponse = () => {
                     } else {
                       // Add final cost
                       const addedAmount = 0.3
-                      contextUsed.value += addedAmount
+                      messagesTextTokens.value += addedAmount
                       animateContextIncrease(addedAmount)
                       if (agentMsg) agentMsg.tokens += addedAmount
                       
@@ -351,7 +432,7 @@ const simulateAgentResponse = () => {
         
         // Add context cost for operation
         const addedAmount = operation.cost
-        contextUsed.value += addedAmount
+        systemToolsTokens.value += addedAmount
         animateContextIncrease(addedAmount)
         if (agentMsg) agentMsg.tokens += addedAmount
         
@@ -367,20 +448,142 @@ const simulateAgentResponse = () => {
 <template>
   <div class="chat-input-container">
     <div class="chat-wrapper">
+      <div class="chat-header">
+        <div class="header-left">
+          <div class="title-with-progress"
+            @mouseenter="isContextHovered = true"
+            @mouseleave="isContextHovered = false">
+            <svg class="progress-ring" width="20" height="20" viewBox="0 0 20 20">
+              <circle
+                class="progress-ring-background"
+                cx="10"
+                cy="10"
+                r="8"
+                fill="none"
+                stroke-width="2"
+              />
+              <circle
+                class="progress-ring-progress"
+                cx="10"
+                cy="10"
+                r="8"
+                fill="none"
+                stroke-width="2"
+                :stroke="progressBarColor"
+                :stroke-dasharray="50.27"
+                :stroke-dashoffset="50.27 - (50.27 * Math.min(contextUsagePercent, 100)) / 100"
+                transform="rotate(-90 10 10)"
+              />
+            </svg>
+            <input 
+              v-if="isEditingTitle"
+              ref="titleInput"
+              v-model="chatTitle"
+              @blur="isEditingTitle = false"
+              @keydown.enter="isEditingTitle = false"
+              class="title-input"
+            />
+            <h2 v-else class="chat-title" @click="isEditingTitle = true; nextTick(() => titleInput?.select())">{{ chatTitle }}</h2>
+          </div>
+          
+          <div v-if="!isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
+            <div class="progress-bar" :style="{ background: progressBarColor + '4D' }">
+              <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
+            </div>
+            <div class="tooltip-title">
+              <template v-if="contextUsagePercent >= 100">
+                Token limit reached
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                Nearing input token limit
+              </template>
+              <!-- <template v-else>
+                {{ Math.round(contextUsagePercent) }}% used
+              </template> -->
+            </div>
+            <div class="tooltip-breakdown">
+              <div class="breakdown-row">
+                <span class="breakdown-label">Total usage</span>
+                <span class="breakdown-value">{{ totalTokensUsed.toFixed(1) }}k / {{ contextLimit }}k • {{ Math.round(contextUsagePercent) }}%</span>
+              </div>
+              <div class="breakdown-separator"></div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">System prompt</span>
+                <span class="breakdown-value">{{ systemPromptTokens.toFixed(1) }}k • {{ Math.round((systemPromptTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">System tools</span>
+                <span class="breakdown-value">{{ systemToolsTokens.toFixed(1) }}k • {{ Math.round((systemToolsTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">MCP tools</span>
+                <span class="breakdown-value">{{ mcpToolsTokens.toFixed(1) }}k • {{ Math.round((mcpToolsTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Attached files</span>
+                <span class="breakdown-value">{{ messagesTextTokens.toFixed(1) }}k • {{ Math.round((messagesTextTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Messages</span>
+                <span class="breakdown-value">{{ messagesFilesTokens.toFixed(1) }}k • {{ Math.round((messagesFilesTokens / contextLimit) * 100) }}%</span>
+              </div>
+            </div>
+            <div class="tooltip-subtitle">
+              <template v-if="contextUsagePercent >= 100">
+                Start a new session or change models to continue.
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                Start a new session or change models to increase limit.
+              </template>
+              <template v-else>
+                Adding files and large requests will consume more tokens
+              </template>
+            </div>
+            <div class="tooltip-arrow" :style="{ borderBottomColor: tooltipBackground }"></div>
+          </div>
+        </div>
+        <div class="header-controls">
+          <button class="header-btn" title="New session" @click="() => console.log('New session')">
+            <i class="codicon codicon-add"></i>
+          </button>
+          <button class="header-btn" title="Clear chat" @click="() => console.log('Clear chat')">
+            <i class="codicon codicon-gear"></i>
+          </button>
+          <button class="header-btn" title="More actions" @click="() => console.log('More actions')">
+            <i class="codicon codicon-ellipsis"></i>
+          </button>
+          <button class="header-btn" title="More actions" @click="() => console.log('More actions')">
+            <i class="codicon codicon-screen-full"></i>
+          </button>
+        </div>
+      </div>
       <div ref="chatHistoryContainer" class="chat-history">
         <div v-for="msg in chatHistory" :key="msg.id" class="chat-message" :class="msg.type">
         <div class="message-text">
           {{ msg.text }}
         </div>
         <div v-if="msg.widgets && msg.widgets.length > 0" class="widgets-container">
-          <div v-for="widget in msg.widgets" :key="widget.id" class="operation-widget" :class="widget.status">
+          <div v-for="widget in msg.widgets" :key="widget.id" class="operation-widget" :class="widget.status"
+            @mouseenter="hoveredWidget = widget.id"
+            @mouseleave="hoveredWidget = null">
             <div v-if="widget.status === 'loading'" class="widget-spinner">
               <i class="codicon codicon-loading codicon-modifier-spin"></i>
             </div>
             <div v-else class="widget-check">
               <i class="codicon codicon-check"></i>
             </div>
-            <span class="widget-label">{{ widget.status === 'loading' ? 'Working...' : widget.label }}</span>
+            <span class="widget-label">
+              <template v-if="widget.status === 'loading'">
+                Working • 
+                <span v-if="widgetAnimations[widget.id]?.digits?.length">
+                  <span v-for="(digit, idx) in widgetAnimations[widget.id].digits" :key="idx" class="spinner-digit" :class="digit.class">{{ digit.value }}</span>
+                </span>
+                <span v-else>{{ (widgetAnimations[widget.id]?.displayed || widget.cost).toFixed(1) }}</span>k tokens used
+              </template>
+              <template v-else>
+                {{ widget.label }}<span v-if="hoveredWidget === widget.id"> • {{ widget.cost }}k tokens</span>
+              </template>
+            </span>
           </div>
         </div>
         <div v-if="msg.continuationText" class="message-text continuation-text">
@@ -430,71 +633,8 @@ const simulateAgentResponse = () => {
           <div class="context-info">
             <span 
               v-if="pendingContext > 0"
-              @mouseenter="isContextHovered = true"
-              @mouseleave="isContextHovered = false"
-            >(+{{ pendingContext.toFixed(1) }}k) </span>
-            <span 
-              v-if="!isSpinning" 
-              :style="{ color: contextUsedColor }" 
-              class="context-value"
-              @mouseenter="isContextHovered = true"
-              @mouseleave="isContextHovered = false"
-            >
-              {{ displayedContext.toFixed(1) }}k
-              <span v-for="num in floatingNumbers" :key="num.id" class="floating-number">
-                +{{ num.value.toFixed(1) }}k
-              </span>
-            </span>
-            <span 
-              v-else 
-              class="spinner-container"
-              @mouseenter="isContextHovered = true"
-              @mouseleave="isContextHovered = false"
-            >
-              <span>
-                <span 
-                  v-for="digit in spinnerDigits" 
-                  :key="digit.key"
-                  class="spinner-digit"
-                  :class="digit.position"
-                >
-                  {{ digit.value }}
-                </span>
-              </span>k
-            </span>
-            <span
-              @mouseenter="isContextHovered = true"
-              @mouseleave="isContextHovered = false"
-            >/{{ contextLimit }}k</span>
-          </div>
-          
-          <div v-if="isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
-            <div class="progress-bar" :style="{ background: progressBarColor + '4D' }">
-              <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
-            </div>
-            <div class="tooltip-title">
-              <template v-if="contextUsagePercent >= 100">
-                Token limit reached
-              </template>
-              <template v-else-if="contextUsagePercent > 50">
-                Nearing input token limit • {{ Math.round(contextUsagePercent) }}% used
-              </template>
-              <template v-else>
-                Tokens used • {{ Math.round(contextUsagePercent) }}%
-              </template>
-            </div>
-            <div class="tooltip-subtitle">
-              <template v-if="contextUsagePercent >= 100">
-                Start a new session or change models to continue.
-              </template>
-              <template v-else-if="contextUsagePercent > 50">
-                Start a new session or change models to increase limit.
-              </template>
-              <template v-else>
-                Adding files and large requests will consume more tokens
-              </template>
-            </div>
-            <div class="tooltip-arrow" :style="{ borderTopColor: tooltipBackground }"></div>
+              class="pending-context"
+            >+{{ pendingContext.toFixed(1) }}k</span>
           </div>
         </div>
       </div>
@@ -505,7 +645,7 @@ const simulateAgentResponse = () => {
           v-model="message"
           @input="handleInput"
           @keydown="handleKeyDown"
-          @focus="isFocused = true"
+          @focus="isFocused = true; if (message === '') message = 'Add a dark mode toggle to the header'"
           @blur="isFocused = false"
           placeholder="Describe what to build next"
           rows="1"
@@ -575,7 +715,7 @@ const simulateAgentResponse = () => {
 <style scoped>
 .chat-input-container {
   width: 600px;
-  height: 600px;
+  height: 700px;
   margin: 20px auto;
   padding: 0 20px;
   display: flex;
@@ -589,8 +729,99 @@ const simulateAgentResponse = () => {
   flex-direction: column;
   border: 1px solid var(--vscode-input-border, #3c3c3c);
   overflow: hidden;
-  padding: 16px;
   gap: 8px;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0px 16px 0px 8px;
+  flex-shrink: 0;
+  height: 35px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.title-with-progress {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: default;
+}
+
+.progress-ring {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.progress-ring-background {
+  stroke: var(--vscode-input-border, #3c3c3c);
+}
+
+.progress-ring-progress {
+  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+}
+
+.chat-title {
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  color: var(--vscode-foreground, #cccccc);
+  margin: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.title-input {
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  color: var(--vscode-input-foreground, #cccccc);
+  background: var(--vscode-input-background, #3c3c3c);
+  border: 1px solid var(--vscode-focusBorder, #007acc);
+  border-radius: 3px;
+  padding: 4px 6px;
+  outline: none;
+  width: 100%;
+  max-width: 400px;
+}
+
+.header-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-foreground, #cccccc);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.header-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, #505050);
+  opacity: 1;
+}
+
+.header-btn .codicon {
+  font-size: 16px;
 }
 
 .chat-history {
@@ -601,7 +832,7 @@ const simulateAgentResponse = () => {
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
-  padding: 8px;
+  padding: 16px;
 }
 
 .chat-history::-webkit-scrollbar {
@@ -729,6 +960,7 @@ const simulateAgentResponse = () => {
   display: flex;
   flex-direction: column;
   padding: 6px;
+  margin: 16px;
   background: var(--vscode-input-background, #3c3c3c);
   border: 1px solid var(--vscode-input-border, #3c3c3c);
   flex-shrink: 0;
@@ -749,7 +981,7 @@ const simulateAgentResponse = () => {
   gap: 4px;
   flex: 1;
   min-width: 0;
-  max-width: calc(100% - 80px);
+  /* max-width: calc(100% - 80px); */
   flex-wrap: wrap;
 }
 
@@ -812,7 +1044,7 @@ const simulateAgentResponse = () => {
   margin-left: auto;
   flex-shrink: 0;
   align-self: flex-start;
-  min-width: 100px;
+  min-width: 10px;
 }
 
 .context-info {
@@ -822,6 +1054,11 @@ const simulateAgentResponse = () => {
   cursor: default;
   text-align: right;
   line-height: 13px;
+}
+
+.pending-context {
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .context-value {
@@ -894,7 +1131,20 @@ const simulateAgentResponse = () => {
   }
 }
 
-.context-tooltip {
+.header-left .context-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 325px;
+  padding: 8px;
+  background: var(--vscode-editorHoverWidget-background, #2d2d30);
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  border: none;
+}
+
+.context-info-wrapper .context-tooltip {
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
@@ -907,7 +1157,20 @@ const simulateAgentResponse = () => {
   border: none;
 }
 
-.tooltip-arrow {
+.header-left .tooltip-arrow {
+  position: absolute;
+  top: -6px;
+  left: 4px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid;
+  border-bottom-color: inherit;
+  filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.context-info-wrapper .tooltip-arrow {
   position: absolute;
   bottom: -6px;
   right: 10px;
@@ -937,9 +1200,39 @@ const simulateAgentResponse = () => {
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--vscode-foreground, #cccccc);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   line-height: 1.4;
   text-align: left;
+}
+
+.tooltip-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.breakdown-label {
+  color: var(--vscode-descriptionForeground, #999999);
+}
+
+.breakdown-value {
+  color: var(--vscode-foreground, #cccccc);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-separator {
+  height: 1px;
+  background: var(--vscode-input-border, #3c3c3c);
+  margin: 4px 0;
 }
 
 .tooltip-subtitle {
@@ -1090,6 +1383,7 @@ const simulateAgentResponse = () => {
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
+  cursor: default;
 }
 
 .operation-widget {
@@ -1109,6 +1403,24 @@ const simulateAgentResponse = () => {
   flex: 1;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 12px;
+  position: relative;
+}
+
+.widget-label .spinner-digit {
+  position: absolute;
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+.widget-label .spinner-digit.old {
+  animation: slide-up 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.widget-label .spinner-digit.new {
+  animation: slide-in 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .widget-spinner,
