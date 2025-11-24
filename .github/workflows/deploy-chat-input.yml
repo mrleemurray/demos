@@ -32,11 +32,14 @@ jobs:
         working-directory: ./chat-input-prototype
         run: npm run build
       
+      - name: Add CNAME file
+        run: echo "demos.mrleemurray.com" > ./chat-input-prototype/dist/CNAME
+      
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./chat-input-prototype/dist
           publish_branch: gh-pages
-          destination_dir: demos/chat-input-prototype
+          destination_dir: chat-input-prototype
           keep_files: false
