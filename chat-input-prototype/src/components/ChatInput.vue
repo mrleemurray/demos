@@ -486,7 +486,7 @@ const simulateAgentResponse = () => {
             <h2 v-else class="chat-title" @click="isEditingTitle = true; nextTick(() => titleInput?.select())">{{ chatTitle }}</h2>
           </div>
           
-          <div v-if="!isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
+          <div v-if="isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
             <div class="progress-bar" :style="{ background: progressBarColor + '4D' }">
               <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
             </div>
@@ -497,9 +497,6 @@ const simulateAgentResponse = () => {
               <template v-else-if="contextUsagePercent > 50">
                 Nearing input token limit
               </template>
-              <!-- <template v-else>
-                {{ Math.round(contextUsagePercent) }}% used
-              </template> -->
             </div>
             <div class="tooltip-breakdown">
               <div class="breakdown-row">
