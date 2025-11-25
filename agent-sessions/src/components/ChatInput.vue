@@ -1,10 +1,26 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import '@vscode/codicons/dist/codicon.css'
-import ChatInputBox from './ChatInputBox.vue'
+import CustomDropdown from './CustomDropdown.vue'
+
+// Props to make it reusable
+const props = defineProps({
+  initialTitle: {
+    type: String,
+    default: 'Build dark mode toggle'
+  },
+  showAnimationControls: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['send', 'attach', 'newSession'])
 
 const message = ref('')
+const textarea = ref(null)
 const chatHistoryContainer = ref(null)
+const isFocused = ref(false)
 const chatMode = ref('ask')
 const selectedModel = ref('claude')
 const isContextHovered = ref(false)
@@ -26,7 +42,7 @@ const streamedText = ref('')
 const chatHistory = ref([])
 const widgetAnimations = ref({})
 const hoveredWidget = ref(null)
-const chatTitle = ref('Build dark mode toggle')
+const chatTitle = ref(props.initialTitle)
 const isTooltipOpen = ref(false)
 
 let animationFrame = null
@@ -77,6 +93,13 @@ const contextLimit = computed(() => {
 const totalTokensUsed = computed(() => {
   return systemPromptTokens.value + systemToolsTokens.value + mcpToolsTokens.value + messagesTextTokens.value + messagesFilesTokens.value
 })
+
+const handleInput = () => {
+  if (textarea.value) {
+    textarea.value.style.height = 'auto'
+    textarea.value.style.height = textarea.value.scrollHeight + 'px'
+  }
+}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -236,32 +259,53 @@ const animateWidgetCost = (widgetId, targetCost) => {
 }
 
 const handleSend = () => {
-  const userMessage = message.value
-  console.log('Sending message:', userMessage)
-  console.log('Attached files:', attachedFiles.value)
-  
-  // Add user message to chat history
-  chatHistory.value.push({
-    id: Date.now(),
-    type: 'user',
-    text: userMessage
-  })
-  
-  // Add pending context to total
-  const addedAmount = pendingContext.value
-  messagesTextTokens.value += pendingContext.value
-  pendingContext.value = 0
-  
-  // Animate the increase
-  animateContextIncrease(addedAmount)
-  
-  // Clear message only
-  message.value = ''
-  
-  // Simulate agent response after sending
-  setTimeout(() => {
-    simulateAgentResponse()
-  }, 500)
+  if (!isEmpty.value) {
+    const userMessage = message.value
+    
+    // Emit event for parent component
+    emit('send', {
+      message: userMessage,
+      files: attachedFiles.value,
+      mode: chatMode.value,
+      model: selectedModel.value
+    })
+    
+    // Add user message to chat history
+    chatHistory.value.push({
+      id: Date.now(),
+      type: 'user',
+      text: userMessage
+    })
+    
+    // Add pending context to total
+    const addedAmount = pendingContext.value
+    messagesTextTokens.value += pendingContext.value
+    pendingContext.value = 0
+    
+    // Animate the increase
+    animateContextIncrease(addedAmount)
+    
+    // Clear message only
+    message.value = ''
+    
+    nextTick(() => {
+      if (textarea.value) {
+        textarea.value.style.height = 'auto'
+      }
+    })
+    
+    // Simulate agent response after sending
+    setTimeout(() => {
+      simulateAgentResponse()
+    }, 500)
+  }
+}
+
+const handleKeyDown = (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSend()
+  }
 }
 
 const resetSession = () => {
@@ -280,14 +324,14 @@ const resetSession = () => {
   streamedText.value = ''
   widgetAnimations.value = {}
   hoveredWidget.value = null
-  chatTitle.value = 'Build dark mode toggle'
+  chatTitle.value = props.initialTitle
   isTooltipOpen.value = false
   isContextHovered.value = false
   floatingNumbers.value = []
   spinnerDigits.value = []
   isSpinning.value = false
   
-  console.log('Session reset')
+  emit('newSession')
 }
 
 const toggleTooltip = () => {
@@ -317,14 +361,13 @@ const handleAttachment = () => {
   attachedFiles.value.push(randomFile)
   pendingContext.value += randomFile.tokens
   
-  console.log('Attached:', randomFile.name, `(${randomFile.tokens}k)`)
+  emit('attach', randomFile)
 }
 
 const removeFile = (index) => {
   const file = attachedFiles.value[index]
   pendingContext.value -= file.tokens
   attachedFiles.value.splice(index, 1)
-  console.log('Removed:', file.name)
 }
 
 const simulateAgentResponse = () => {
@@ -550,13 +593,13 @@ const simulateAgentResponse = () => {
           <button class="header-btn" title="New session" @click="resetSession">
             <i class="codicon codicon-add"></i>
           </button>
-          <button class="header-btn" title="Clear chat" @click="() => console.log('Clear chat')">
+          <button class="header-btn" title="Settings">
             <i class="codicon codicon-gear"></i>
           </button>
-          <button class="header-btn" title="More actions" @click="() => console.log('More actions')">
+          <button class="header-btn" title="More actions">
             <i class="codicon codicon-ellipsis"></i>
           </button>
-          <button class="header-btn" title="More actions" @click="() => console.log('More actions')">
+          <button class="header-btn" title="Full screen">
             <i class="codicon codicon-screen-full"></i>
           </button>
         </div>
@@ -595,16 +638,16 @@ const simulateAgentResponse = () => {
         </div>
         <div v-if="msg.type === 'agent'" class="message-feedback">
           <div class="feedback-actions">
-            <button class="feedback-btn" title="Regenerate" @click="() => console.log('Regenerate', msg.id)">
+            <button class="feedback-btn" title="Regenerate">
               <i class="codicon codicon-refresh"></i>
             </button>
-            <button class="feedback-btn" title="Undo" @click="() => console.log('Undo', msg.id)">
+            <button class="feedback-btn" title="Undo">
               <i class="codicon codicon-discard"></i>
             </button>
-            <button class="feedback-btn" title="Helpful" @click="() => console.log('Thumbs up', msg.id)">
+            <button class="feedback-btn" title="Helpful">
               <i class="codicon codicon-thumbsup"></i>
             </button>
-            <button class="feedback-btn" title="Not helpful" @click="() => console.log('Thumbs down', msg.id)">
+            <button class="feedback-btn" title="Not helpful">
               <i class="codicon codicon-thumbsdown"></i>
             </button>
           </div>
@@ -616,19 +659,85 @@ const simulateAgentResponse = () => {
       </div>
     </div>
     
-    <ChatInputBox
-      v-model="message"
-      v-model:chat-mode="chatMode"
-      v-model:selected-model="selectedModel"
-      :attached-files="attachedFiles"
-      :pending-context="pendingContext"
-      @send="handleSend"
-      @attach="handleAttachment"
-      @remove-file="removeFile"
-    />
+    <div class="chat-input-wrapper" :class="{ focused: isFocused }">
+      <div class="attachment-row">
+        <div class="attachments-section">
+          <button class="attachment-button" @click="handleAttachment" title="Attach files">
+            <i class="codicon codicon-attach"></i>
+            <span v-if="attachedFiles.length === 0" class="attachment-text">Add Context...</span>
+          </button>
+          
+          <div v-for="(file, index) in attachedFiles" :key="index" class="file-chip">
+            <i class="codicon codicon-file"></i>
+            <span class="file-name">{{ file.name }}</span>
+            <button class="remove-file" @click="removeFile(index)" title="Remove">
+              <i class="codicon codicon-close"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="context-info-wrapper">
+          <div class="context-info">
+            <span 
+              v-if="pendingContext > 0"
+              class="pending-context"
+            >+{{ pendingContext.toFixed(1) }}k</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="input-row">
+        <textarea
+          ref="textarea"
+          v-model="message"
+          @input="handleInput"
+          @keydown="handleKeyDown"
+          @focus="isFocused = true"
+          @blur="isFocused = false"
+          placeholder="Describe what to build next"
+          rows="1"
+          class="chat-textarea"
+        ></textarea>
+      </div>
+      
+      <div class="footer-row">
+        <div class="dropdowns">
+          <CustomDropdown 
+            v-model="chatMode"
+            :options="chatModes"
+          />
+          
+          <CustomDropdown 
+            v-model="selectedModel"
+            :options="models"
+          />
+        </div>
+        
+        <div class="action-buttons">
+          <button 
+            class="forward-button"
+            :class="{ disabled: isEmpty }"
+            :disabled="isEmpty"
+            title="Forward"
+          >
+            <i class="codicon codicon-forward"></i>
+          </button>
+          
+          <button 
+            class="send-button" 
+            :class="{ disabled: isEmpty }"
+            @click="handleSend"
+            :disabled="isEmpty"
+            title="Send"
+          >
+            <i class="codicon codicon-send"></i>
+          </button>
+        </div>
+      </div>
+    </div>
     </div>
     
-    <div class="animation-controls">
+    <div v-if="showAnimationControls" class="animation-controls">
       <label class="radio-label">
         <input type="radio" value="instant" v-model="animationStyle" aria-label="No Animation" />
         <span>No Animation</span>
@@ -651,10 +760,8 @@ const simulateAgentResponse = () => {
 
 <style scoped>
 .chat-input-container {
-  width: 600px;
-  height: 700px;
-  margin: 20px auto;
-  padding: 0 20px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -716,20 +823,6 @@ const simulateAgentResponse = () => {
   display: inline-flex;
   height: 35px;
   align-items: center;
-}
-
-.title-input {
-  font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-weight: 600;
-  color: var(--vscode-input-foreground, #cccccc);
-  background: var(--vscode-input-background, #3c3c3c);
-  border: 1px solid var(--vscode-focusBorder, #007acc);
-  border-radius: 3px;
-  padding: 4px 6px;
-  outline: none;
-  width: 100%;
-  max-width: 400px;
 }
 
 .header-controls {
@@ -806,7 +899,6 @@ const simulateAgentResponse = () => {
   margin-bottom: 12px;
   padding: 10px 12px;
   border-radius: 5px;
-  
   align-self: flex-start;
 }
 
@@ -817,7 +909,8 @@ const simulateAgentResponse = () => {
 }
 
 .chat-message.agent {
-    width: 524px;
+  width: 100%;
+  max-width: 524px;
 }
 
 .message-text {
@@ -891,6 +984,116 @@ const simulateAgentResponse = () => {
 
 .token-count {
   opacity: 0.6;
+}
+
+.chat-input-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  margin: 16px;
+  background: var(--vscode-input-background, #3c3c3c);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  flex-shrink: 0;
+  border-radius: 5px;
+}
+
+.attachment-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.attachments-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.file-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 3px;
+  background: transparent;
+  border: 1px solid var(--vscode-input-border, #FFFFFF22);
+  border-radius: 5px;
+  font-size: 11px;
+  height: 16px;
+  color: var(--vscode-input-foreground, #cccccc);
+  cursor: default;
+  user-select: none;
+}
+
+.file-chip:hover {
+  background: var(--vscode-toolbar-hoverBackground, #505050);
+}
+
+.file-chip .codicon-file {
+  font-size: 16px;
+}
+
+.file-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  border-radius: 2px;
+}
+
+.remove-file:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.remove-file .codicon {
+  font-size: 12px;
+}
+
+.context-info-wrapper {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: flex-start;
+  min-width: 10px;
+}
+
+.context-info {
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--vscode-descriptionForeground, #999999);
+  cursor: default;
+  text-align: right;
+  line-height: 13px;
+}
+
+.pending-context {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.context-value {
+  position: relative;
+  display: inline-block;
 }
 
 .header-left .context-tooltip {
@@ -979,29 +1182,114 @@ const simulateAgentResponse = () => {
   text-align: left;
 }
 
-.floating-number {
-  position: absolute;
-  top: -12px;
-  left: 0;
-  transform: translateX(-100%);
-  font-size: 12px;
-  font-weight: 600;
-  color: #4ec9b0;
-  pointer-events: none;
-  animation: float-up 1.5s ease-out forwards;
-  /* text-shadow: 0 0 8px rgba(78, 201, 176, 0.6); */
-  white-space: nowrap;
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-@keyframes float-up {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-40px);
-  }
+.footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attachment-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: auto;
+  padding: 2px 3px;
+  border: 1px solid var(--vscode-input-border, #FFFFFF22);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--vscode-input-foreground, #cccccc);
+  cursor: pointer;
+}
+
+.attachment-text {
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.forward-button,
+.send-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--vscode-input-foreground, #cccccc);
+  cursor: pointer;
+}
+
+.attachment-button:hover,
+.forward-button:hover,
+.send-button:hover:not(.disabled) {
+  background: var(--vscode-toolbar-hoverBackground, #505050);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.send-button.disabled,
+.forward-button.disabled {
+  opacity: 0.4;
+}
+
+.chat-textarea {
+  flex: 1;
+  height: 24px !important;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 4px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--vscode-input-foreground, #cccccc);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+  resize: none;
+  overflow-y: auto;
+}
+
+.chat-textarea::placeholder {
+  color: var(--vscode-input-placeholderForeground, #999999);
+}
+
+.chat-textarea::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chat-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, #4e4e4e);
+  border-radius: 5px;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, #5a5a5a);
+}
+
+.dropdowns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .widgets-container {
@@ -1032,23 +1320,6 @@ const simulateAgentResponse = () => {
   position: relative;
 }
 
-.widget-label .spinner-digit {
-  position: absolute;
-  display: inline-block;
-  white-space: nowrap;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-  -webkit-font-smoothing: subpixel-antialiased;
-}
-
-.widget-label .spinner-digit.old {
-  animation: slide-up 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.widget-label .spinner-digit.new {
-  animation: slide-in 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
 .widget-spinner,
 .widget-check {
   display: flex;
@@ -1071,7 +1342,7 @@ const simulateAgentResponse = () => {
 .animation-controls {
   display: flex;
   gap: 16px;
-  margin-top: 64px;
+  margin-top: 16px;
   padding: 8px 12px;
   background: var(--vscode-editor-background, #1e1e1e);
   border: 1px solid var(--vscode-input-border, #3c3c3c);
@@ -1087,7 +1358,6 @@ const simulateAgentResponse = () => {
   font-size: 12px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--vscode-foreground, #cccccc);
-  
 }
 
 .radio-label input[type="radio"] {
