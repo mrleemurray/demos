@@ -52,7 +52,7 @@ jobs:
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
           cp index.html deploy/index.html
-          cp favicon.png deploy/favicon.png
+          cp favicon.svg deploy/favicon.svg
       
       - name: Add CNAME file
         run: echo "demos.mrleemurray.com" > deploy/CNAME
