@@ -31,37 +31,41 @@
     .subtitle {
       font-size: 16px;
       color: #999999;
-      margin-bottom: 48px;
+      margin-bottom: 16px;
     }
     .demos {
       display: grid;
-      gap: 20px;
+      border: 1px solid #3c3c3c;
     }
     .demo-card {
-      background: #252526;
-      border: 1px solid #3c3c3c;
-      border-radius: 8px;
-      padding: 24px;
+      padding: 16px;
       text-decoration: none;
       color: inherit;
       transition: all 0.2s ease;
       display: block;
     }
-    .demo-card:hover {
-      border-color: #007acc;
-      background: #2d2d30;
-      transform: translateY(-2px);
+    .demo-card:not(:first-child) {
+      border-top: 1px solid #3c3c3c;
     }
+    .demo-card:hover {
+      border-color: #ffb30f;
+      background: #2d2d30;
+    }
+
     .demo-title {
       font-size: 20px;
       font-weight: 600;
       color: #ffffff;
       margin-bottom: 8px;
     }
+
+    .demo-card:hover > .demo-title {
+      color: #ffb30f;
+    }
+    
     .demo-description {
       font-size: 14px;
       color: #999999;
-      line-height: 1.5;
     }
     .demo-path {
       font-size: 12px;
@@ -74,13 +78,13 @@
 <body>
   <div class="container">
     <h1>Demos</h1>
-    <p class="subtitle">Interactive prototypes and explorations</p>
+    <p class="subtitle">Interactive prototypes & explorations</p>
     
     <div class="demos">
       <a href="/chat-input-prototype/" class="demo-card">
         <div class="demo-title">Chat Input Prototype</div>
         <div class="demo-description">
-          VSCode-inspired chat interface with token tracking, animation controls, and message history.
+          Chat interface with token tracking & animation controls.
         </div>
         <div class="demo-path">/chat-input-prototype/</div>
       </a>
@@ -88,7 +92,7 @@
       <a href="/gutter-tab/" class="demo-card">
         <div class="demo-title">Gutter Tab</div>
         <div class="demo-description">
-          Explorations for gutter tab behaviors and interactions.
+          Explorations for gutter tab behaviors and interactions for NES.
         </div>
         <div class="demo-path">/gutter-tab/</div>
       </a>
