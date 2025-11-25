@@ -1162,7 +1162,7 @@ const simulateAgentResponse = () => {
 
 .header-left .context-tooltip {
   position: absolute;
-  top: calc(100% + 0px);
+  top: 100%;
   left: 0;
   width: 325px;
   padding: 8px;
