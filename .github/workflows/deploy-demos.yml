@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - 'agent-sessions/**'
       - 'chat-input-prototype/**'
       - 'gutter-tab/**'
       - 'index.html'
@@ -29,6 +30,15 @@ jobs:
         with:
           node-version: '20'
       
+      # Build agent-sessions
+      - name: Install dependencies (agent-sessions)
+        working-directory: ./agent-sessions
+        run: npm install
+      
+      - name: Build agent-sessions
+        working-directory: ./agent-sessions
+        run: npm run build
+      
       # Build chat-input-prototype
       - name: Install dependencies (chat-input-prototype)
         working-directory: ./chat-input-prototype
@@ -51,6 +61,7 @@ jobs:
       - name: Create deployment directory
         run: |
           mkdir -p deploy
+          cp -r agent-sessions/dist deploy/agent-sessions
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
           cp index.html deploy/index.html
