@@ -14,12 +14,12 @@ const pendingContext = ref(0)
 const attachedFiles = ref([])
 const systemPromptTokens = ref(4)
 const systemToolsTokens = ref(0)
-const mcpToolsTokens = ref(2.5)
-const messagesTextTokens = ref(3.2)
-const messagesFilesTokens = ref(2.6)
+const mcpToolsTokens = ref(0)
+const messagesTextTokens = ref(0)
+const messagesFilesTokens = ref(0)
 const contextUsed = computed(() => totalTokensUsed.value)
 const animationStyle = ref('instant')
-const displayedContext = ref(12.3)
+const displayedContext = ref(0)
 const floatingNumbers = ref([])
 const spinnerDigits = ref([])
 const isSpinning = ref(false)
@@ -29,8 +29,7 @@ const chatHistory = ref([])
 const widgetAnimations = ref({})
 const hoveredWidget = ref(null)
 const chatTitle = ref('Build dark mode toggle')
-const isEditingTitle = ref(false)
-const titleInput = ref(null)
+const isTooltipOpen = ref(false)
 
 let animationFrame = null
 
@@ -289,6 +288,46 @@ const handleKeyDown = (e) => {
   }
 }
 
+const resetSession = () => {
+  // Reset all state to initial values
+  message.value = ''
+  chatHistory.value = []
+  attachedFiles.value = []
+  pendingContext.value = 0
+  systemPromptTokens.value = 4
+  systemToolsTokens.value = 0
+  mcpToolsTokens.value = 0
+  messagesTextTokens.value = 0
+  messagesFilesTokens.value = 0
+  displayedContext.value = 0
+  isStreaming.value = false
+  streamedText.value = ''
+  widgetAnimations.value = {}
+  hoveredWidget.value = null
+  chatTitle.value = 'Build dark mode toggle'
+  isTooltipOpen.value = false
+  isContextHovered.value = false
+  floatingNumbers.value = []
+  spinnerDigits.value = []
+  isSpinning.value = false
+  
+  console.log('Session reset')
+}
+
+const toggleTooltip = () => {
+  isTooltipOpen.value = !isTooltipOpen.value
+  isContextHovered.value = isTooltipOpen.value
+}
+
+const handleClickOutside = (event) => {
+  const titleArea = event.target.closest('.title-with-progress')
+  const tooltipArea = event.target.closest('.context-tooltip')
+  if (!titleArea && !tooltipArea && isTooltipOpen.value) {
+    isTooltipOpen.value = false
+    isContextHovered.value = false
+  }
+}
+
 const handleAttachment = () => {
   // Add dummy files with random context amounts
   const dummyFiles = [
@@ -446,14 +485,14 @@ const simulateAgentResponse = () => {
 </script>
 
 <template>
-  <div class="chat-input-container">
+  <div class="chat-input-container" @click="handleClickOutside">
     <div class="chat-wrapper">
       <div class="chat-header">
         <div class="header-left">
           <div class="title-with-progress"
             @mouseenter="isContextHovered = true"
-            @mouseleave="isContextHovered = false">
-            <svg class="progress-ring" width="20" height="20" viewBox="0 0 20 20">
+            @mouseleave="() => { if (!isTooltipOpen) isContextHovered = false }">
+            <svg class="progress-ring" width="20" height="20" viewBox="0 0 20 20" @click.stop="toggleTooltip" style="cursor: pointer;">
               <circle
                 class="progress-ring-background"
                 cx="10"
@@ -475,18 +514,10 @@ const simulateAgentResponse = () => {
                 transform="rotate(-90 10 10)"
               />
             </svg>
-            <input 
-              v-if="isEditingTitle"
-              ref="titleInput"
-              v-model="chatTitle"
-              @blur="isEditingTitle = false"
-              @keydown.enter="isEditingTitle = false"
-              class="title-input"
-            />
-            <h2 v-else class="chat-title" @click="isEditingTitle = true; nextTick(() => titleInput?.select())">{{ chatTitle }}</h2>
+            <h2 class="chat-title" @click.stop="toggleTooltip" style="cursor: pointer;">{{ chatTitle }}</h2>
           </div>
           
-          <div v-if="isContextHovered" class="context-tooltip" :style="{ background: tooltipBackground }">
+          <div v-if="isContextHovered || isTooltipOpen" class="context-tooltip" :style="{ background: tooltipBackground }" @click.stop @mouseenter="isContextHovered = true" @mouseleave="() => { if (!isTooltipOpen) isContextHovered = false }">
             <div class="progress-bar" :style="{ background: progressBarColor + '4D' }">
               <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
             </div>
@@ -527,20 +558,20 @@ const simulateAgentResponse = () => {
             </div>
             <div class="tooltip-subtitle">
               <template v-if="contextUsagePercent >= 100">
-                Start a new session or change models to continue.
+                <a @click="resetSession" style="cursor: pointer;">Start a new session</a> to continue.
               </template>
               <template v-else-if="contextUsagePercent > 50">
-                Start a new session or change models to increase limit.
+                <a @click="resetSession" style="cursor: pointer;">Start a new session</a> to increase limit.
               </template>
               <template v-else>
-                Adding files and large requests will consume more tokens
+                Adding files and large requests will consume more tokens.
               </template>
             </div>
             <div class="tooltip-arrow" :style="{ borderBottomColor: tooltipBackground }"></div>
           </div>
         </div>
         <div class="header-controls">
-          <button class="header-btn" title="New session" @click="() => console.log('New session')">
+          <button class="header-btn" title="New session" @click="resetSession">
             <i class="codicon codicon-add"></i>
           </button>
           <button class="header-btn" title="Clear chat" @click="() => console.log('Clear chat')">
@@ -773,8 +804,9 @@ const simulateAgentResponse = () => {
   margin: 0;
   cursor: pointer;
   padding: 4px 6px;
-  border-radius: 3px;
-  display: inline-block;
+  display: inline-flex;
+  height: 35px;
+  align-items: center;
 }
 
 .title-input {
@@ -1130,7 +1162,7 @@ const simulateAgentResponse = () => {
 
 .header-left .context-tooltip {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 0px);
   left: 0;
   width: 325px;
   padding: 8px;
@@ -1469,6 +1501,10 @@ const simulateAgentResponse = () => {
 
 .radio-label:hover {
   color: var(--vscode-input-foreground, #ffffff);
+}
+
+a {
+  color: #4daafc;
 }
 
 /* Dark theme overrides */
