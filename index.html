@@ -35,22 +35,21 @@
     }
     .demos {
       display: grid;
-      gap: 20px;
+      border: 1px solid #3c3c3c;
     }
     .demo-card {
-      background: #252526;
-      border: 1px solid #3c3c3c;
-      border-radius: 8px;
-      padding: 24px;
+      padding: 16px;
       text-decoration: none;
       color: inherit;
       transition: all 0.2s ease;
       display: block;
     }
+    .demo-card:not(:first-child) {
+      border-top: 1px solid #3c3c3c;
+    }
     .demo-card:hover {
-      border-color: #007acc;
+      border-color: #ffb30f;
       background: #2d2d30;
-      transform: translateY(-2px);
     }
     .demo-title {
       font-size: 20px;
@@ -61,7 +60,6 @@
     .demo-description {
       font-size: 14px;
       color: #999999;
-      line-height: 1.5;
     }
     .demo-path {
       font-size: 12px;
