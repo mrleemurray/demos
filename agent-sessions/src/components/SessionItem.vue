@@ -9,6 +9,10 @@ const props = defineProps({
   archived: {
     type: Boolean,
     default: false
+  },
+  unread: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -49,7 +53,8 @@ const locationIcon = computed(() => {
 </script>
 
 <template>
-  <div class="session-item" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+  <div class="session-item" :class="{ 'unread': unread }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+    <div v-if="unread" class="unread-indicator"></div>
     <button 
       v-if="isHovered" 
       class="archive-button" 
@@ -95,6 +100,23 @@ const locationIcon = computed(() => {
 
 .session-item:hover {
   background-color: #2b2d2e;
+}
+
+.session-item.unread {
+  background-color: rgba(14, 112, 192, 0.1);
+}
+
+.session-item.unread:hover {
+  background-color: rgba(14, 112, 192, 0.15);
+}
+
+.unread-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--vscode-focusBorder, #007acc);
 }
 
 .archive-button {
@@ -170,6 +192,10 @@ const locationIcon = computed(() => {
   line-height: 1.4;
   color: var(--vscode-foreground);
   font-weight: 400;
+}
+
+.session-item.unread .session-title {
+  font-weight: 600;
 }
 
 .session-changes {

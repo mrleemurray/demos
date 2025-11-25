@@ -1,6 +1,8 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import SessionItem from './SessionItem.vue';
+
+const now = Date.now();
 
 const activeSessions = ref([
   {
@@ -9,7 +11,8 @@ const activeSessions = ref([
     status: 'Complete',
     icon: 'check',
     location: 'Background',
-    time: '1 hr'
+    timestamp: now - 60 * 60 * 1000, // 1 hour ago
+    unread: false
   },
   {
     id: 2,
@@ -17,8 +20,9 @@ const activeSessions = ref([
     status: 'Complete',
     icon: 'issue-closed',
     location: 'Cloud',
-    time: '30 min',
-    changes: { added: 150, removed: 10 }
+    timestamp: now - 30 * 60 * 1000, // 30 min ago
+    changes: { added: 150, removed: 10 },
+    unread: true
   },
   {
     id: 3,
@@ -26,7 +30,8 @@ const activeSessions = ref([
     status: 'Complete',
     icon: 'git-pull-request-closed',
     location: 'Local',
-    time: '1 min'
+    timestamp: now - 1 * 60 * 1000, // 1 min ago
+    unread: false
   },
   {
     id: 4,
@@ -34,8 +39,9 @@ const activeSessions = ref([
     status: 'Running',
     icon: 'git-pull-request',
     location: 'Cloud',
-    time: '2 min',
-    changes: { added: 45, removed: 5 }
+    timestamp: now - 2 * 60 * 1000, // 2 min ago
+    changes: { added: 45, removed: 5 },
+    unread: true
   },
   {
     id: 5,
@@ -43,7 +49,8 @@ const activeSessions = ref([
     status: 'Failed',
     icon: 'error',
     location: 'Local',
-    time: '5 min'
+    timestamp: now - 5 * 60 * 1000, // 5 min ago
+    unread: false
   },
   {
     id: 6,
@@ -51,8 +58,9 @@ const activeSessions = ref([
     status: 'Complete',
     icon: 'check',
     location: 'Cloud',
-    time: '15 min',
-    changes: { added: 230, removed: 12 }
+    timestamp: now - 15 * 60 * 1000, // 15 min ago
+    changes: { added: 230, removed: 12 },
+    unread: true
   },
   {
     id: 7,
@@ -60,13 +68,59 @@ const activeSessions = ref([
     status: 'Complete',
     icon: 'issue-closed',
     location: 'Local',
-    time: '45 min',
-    changes: { added: 78, removed: 134 }
+    timestamp: now - 45 * 60 * 1000, // 45 min ago
+    changes: { added: 78, removed: 134 },
+    unread: false
   }
 ]);
 
 const archivedSessions = ref([]);
 const isArchivedExpanded = ref(true);
+const currentTime = ref(Date.now());
+
+// Format relative time
+const formatRelativeTime = (timestamp) => {
+  const diff = currentTime.value - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (seconds < 10) return 'now';
+  if (seconds < 60) return `${seconds} sec`;
+  if (minutes < 60) return `${minutes} min`;
+  if (hours < 24) return `${hours} hr`;
+  return `${days} day${days > 1 ? 's' : ''}`;
+};
+
+// Computed sorted sessions - unread items first, then by time
+const sortedActiveSessions = computed(() => {
+  return [...activeSessions.value].map(session => ({
+    ...session,
+    time: formatRelativeTime(session.timestamp)
+  })).sort((a, b) => {
+    // First sort by unread status
+    if (a.unread !== b.unread) {
+      return a.unread ? -1 : 1;
+    }
+    // Then sort by timestamp (most recent first)
+    return b.timestamp - a.timestamp;
+  });
+});
+
+const sortedArchivedSessions = computed(() => {
+  return [...archivedSessions.value].map(session => ({
+    ...session,
+    time: formatRelativeTime(session.timestamp)
+  })).sort((a, b) => {
+    // First sort by unread status
+    if (a.unread !== b.unread) {
+      return a.unread ? -1 : 1;
+    }
+    // Then sort by timestamp (most recent first)
+    return b.timestamp - a.timestamp;
+  });
+});
 
 const draggedIndex = ref(null);
 const dragOverIndex = ref(null);
@@ -75,6 +129,8 @@ const sourceList = ref(null);
 
 const handleSessionClick = (session) => {
   console.log('Session clicked:', session);
+  // Mark as read when clicked
+  session.unread = false;
 };
 
 const toggleArchived = () => {
@@ -148,6 +204,42 @@ const handleDragLeave = (e) => {
     dragOverList.value = null;
   }
 };
+
+const simulateNewMessage = () => {
+  // Pick a random read session to make unread
+  const readSessions = activeSessions.value.filter(s => !s.unread);
+  if (readSessions.length > 0) {
+    const randomSession = readSessions[Math.floor(Math.random() * readSessions.length)];
+    randomSession.unread = true;
+    randomSession.timestamp = Date.now(); // Update to now
+    console.log('Simulated new message for:', randomSession.title);
+  }
+};
+
+const handleKeyPress = (e) => {
+  // Press 'n' to simulate a new unread message
+  if (e.key === 'n' || e.key === 'N') {
+    simulateNewMessage();
+  }
+};
+
+let timeUpdateInterval;
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyPress);
+  
+  // Update time every 10 seconds
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = Date.now();
+  }, 10000);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyPress);
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval);
+  }
+});
 </script>
 
 <template>
@@ -155,7 +247,7 @@ const handleDragLeave = (e) => {
     <div class="list-section">
       <div class="session-list">
         <div 
-          v-for="(session, index) in activeSessions" 
+          v-for="(session, index) in sortedActiveSessions" 
           :key="session.id"
           :class="{ 'drag-over': dragOverIndex === index && dragOverList === 'active' }"
           draggable="true"
@@ -165,7 +257,7 @@ const handleDragLeave = (e) => {
           @dragend="handleDragEnd"
           @click="handleSessionClick(session)"
         >
-          <SessionItem :session="session" @archive="handleArchive(session.id, 'active')" />
+          <SessionItem :session="session" :unread="session.unread" @archive="handleArchive(session.id, 'active')" />
         </div>
       </div>
     </div>
@@ -177,7 +269,7 @@ const handleDragLeave = (e) => {
       </div>
       <div v-if="isArchivedExpanded" class="session-list">
         <div 
-          v-for="(session, index) in archivedSessions" 
+          v-for="(session, index) in sortedArchivedSessions" 
           :key="session.id"
           :class="{ 'drag-over': dragOverIndex === index && dragOverList === 'archived' }"
           draggable="true"
@@ -187,7 +279,7 @@ const handleDragLeave = (e) => {
           @dragend="handleDragEnd"
           @click="handleSessionClick(session)"
         >
-          <SessionItem :session="session" :archived="true" @archive="handleArchive(session.id, 'archived')" />
+          <SessionItem :session="session" :archived="true" :unread="session.unread" @archive="handleArchive(session.id, 'archived')" />
         </div>
       </div>
     </div>
