@@ -102,14 +102,6 @@ const locationIcon = computed(() => {
   background-color: #2b2d2e;
 }
 
-.session-item.unread {
-  background-color: rgba(14, 112, 192, 0.1);
-}
-
-.session-item.unread:hover {
-  background-color: rgba(14, 112, 192, 0.15);
-}
-
 .unread-indicator {
   position: absolute;
   left: 0;

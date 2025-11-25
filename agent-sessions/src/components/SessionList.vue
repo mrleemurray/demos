@@ -129,8 +129,12 @@ const sourceList = ref(null);
 
 const handleSessionClick = (session) => {
   console.log('Session clicked:', session);
-  // Mark as read when clicked
-  session.unread = false;
+  // Find the original session in the array and mark as read
+  const originalSession = activeSessions.value.find(s => s.id === session.id) || 
+                          archivedSessions.value.find(s => s.id === session.id);
+  if (originalSession) {
+    originalSession.unread = false;
+  }
 };
 
 const toggleArchived = () => {
