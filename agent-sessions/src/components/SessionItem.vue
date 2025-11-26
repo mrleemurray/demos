@@ -31,7 +31,7 @@ const statusIcon = computed(() => {
   }
   
   switch (props.session.status) {
-    case 'Complete': return 'check';
+    case 'Complete': return 'issue-closed';
     case 'Running': return 'loading~spin';
     case 'Failed': return 'error';
     default: return 'circle-outline';

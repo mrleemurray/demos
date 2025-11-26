@@ -9,7 +9,7 @@ const activeSessions = ref([
     id: 1,
     title: 'Commenting code for clarity and readability',
     status: 'Complete',
-    icon: 'check',
+    icon: 'issue-closed',
     location: 'Background',
     timestamp: now - 60 * 60 * 1000, // 1 hour ago
     unread: false
@@ -56,7 +56,7 @@ const activeSessions = ref([
     id: 6,
     title: 'Adding unit tests for API endpoints',
     status: 'Complete',
-    icon: 'check',
+    icon: 'issue-closed',
     location: 'Cloud',
     timestamp: now - 15 * 60 * 1000, // 15 min ago
     changes: { added: 230, removed: 12 },
@@ -76,6 +76,7 @@ const activeSessions = ref([
 
 const archivedSessions = ref([]);
 const isArchivedExpanded = ref(true);
+const showAllSessions = ref(false);
 const currentTime = ref(Date.now());
 
 // Format relative time
@@ -95,7 +96,7 @@ const formatRelativeTime = (timestamp) => {
 
 // Computed sorted sessions - unread items first, then by time
 const sortedActiveSessions = computed(() => {
-  return [...activeSessions.value].map(session => ({
+  const sorted = [...activeSessions.value].map(session => ({
     ...session,
     time: formatRelativeTime(session.timestamp)
   })).sort((a, b) => {
@@ -106,6 +107,21 @@ const sortedActiveSessions = computed(() => {
     // Then sort by timestamp (most recent first)
     return b.timestamp - a.timestamp;
   });
+
+  // If not showing all, return only the 3 most recent or unread items
+  if (!showAllSessions.value) {
+    const unreadItems = sorted.filter(s => s.unread);
+    const readItems = sorted.filter(s => !s.unread);
+    
+    // Show all unread items plus enough read items to reach 3 total
+    if (unreadItems.length >= 3) {
+      return unreadItems.slice(0, 3);
+    } else {
+      return [...unreadItems, ...readItems.slice(0, 3 - unreadItems.length)];
+    }
+  }
+  
+  return sorted;
 });
 
 const sortedArchivedSessions = computed(() => {
@@ -264,6 +280,14 @@ onUnmounted(() => {
           <SessionItem :session="session" :unread="session.unread" @archive="handleArchive(session.id, 'active')" />
         </div>
       </div>
+      
+      <button 
+        v-if="!showAllSessions && activeSessions.length > 3" 
+        class="show-all-button"
+        @click="showAllSessions = true"
+      >
+        Show all sessions
+      </button>
     </div>
 
     <div class="list-section" v-if="archivedSessions.length > 0">
@@ -354,5 +378,17 @@ onUnmounted(() => {
 .drag-over {
   border-top: 2px solid var(--vscode-focusBorder, #007acc);
   margin-top: -2px;
+}
+
+.show-all-button {
+  margin: 0px 8px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  border-radius: 4px;
 }
 </style>
