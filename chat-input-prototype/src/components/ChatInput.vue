@@ -16,7 +16,7 @@ const mcpToolsTokens = ref(0)
 const messagesTextTokens = ref(0)
 const messagesFilesTokens = ref(0)
 const contextUsed = computed(() => totalTokensUsed.value)
-const animationStyle = ref('instant')
+const animationStyle = ref('counter')
 const displayedContext = ref(0)
 const floatingNumbers = ref([])
 const spinnerDigits = ref([])
@@ -465,6 +465,9 @@ const simulateAgentResponse = () => {
     <div class="chat-wrapper">
       <div class="chat-header">
         <div class="header-left">
+          <button class="header-btn" title="Back" @click="resetSession">
+            <i class="codicon codicon-arrow-left"></i>
+          </button>
           <div class="title-with-progress"
             @mouseenter="isContextHovered = true"
             @mouseleave="() => { if (!isTooltipOpen) isContextHovered = false }">
@@ -627,25 +630,6 @@ const simulateAgentResponse = () => {
       @remove-file="removeFile"
     />
     </div>
-    
-    <div class="animation-controls">
-      <label class="radio-label">
-        <input type="radio" value="instant" v-model="animationStyle" aria-label="No Animation" />
-        <span>No Animation</span>
-      </label>
-      <label class="radio-label">
-        <input type="radio" value="counter" v-model="animationStyle" aria-label="Counter Animation" />
-        <span>Counter</span>
-      </label>
-      <label class="radio-label">
-        <input type="radio" value="spinner" v-model="animationStyle" aria-label="Spinner Animation" />
-        <span>Spinner</span>
-      </label>
-      <label class="radio-label">
-        <input type="radio" value="rpg" v-model="animationStyle" aria-label="RPG Float Animation" />
-        <span>RPG</span>
-      </label>
-    </div>
   </div>
 </template>
 
@@ -665,6 +649,7 @@ const simulateAgentResponse = () => {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--vscode-input-border, #3c3c3c);
+  background-color: #1b1b1b;
   overflow: hidden;
   gap: 8px;
 }
@@ -680,9 +665,12 @@ const simulateAgentResponse = () => {
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
   flex: 1;
   min-width: 0;
   position: relative;
+  gap: 4px;
 }
 
 .title-with-progress {
@@ -712,7 +700,7 @@ const simulateAgentResponse = () => {
   color: var(--vscode-foreground, #cccccc);
   margin: 0;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 0px 6px;
   display: inline-flex;
   height: 35px;
   align-items: center;
@@ -896,7 +884,7 @@ const simulateAgentResponse = () => {
 .header-left .context-tooltip {
   position: absolute;
   top: 100%;
-  left: 0;
+  left: 26px;
   width: 325px;
   padding: 8px;
   background: var(--vscode-editorHoverWidget-background, #2d2d30);
@@ -1066,38 +1054,6 @@ const simulateAgentResponse = () => {
 .widget-check .codicon-check {
   color: var(--vscode-foreground, #cccccc);
   font-size: 14px;
-}
-
-.animation-controls {
-  display: flex;
-  gap: 16px;
-  margin-top: 64px;
-  padding: 8px 12px;
-  background: var(--vscode-editor-background, #1e1e1e);
-  border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 5px;
-  flex-shrink: 0;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--vscode-foreground, #cccccc);
-  
-}
-
-.radio-label input[type="radio"] {
-  cursor: pointer;
-  accent-color: var(--vscode-focusBorder, #007acc);
-  margin-top: 0px;
-}
-
-.radio-label:hover {
-  color: var(--vscode-input-foreground, #ffffff);
 }
 
 a {
