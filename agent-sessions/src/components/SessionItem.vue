@@ -227,7 +227,6 @@ const locationIcon = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-right: 24px;
 }
 
 .session-title {
@@ -238,6 +237,7 @@ const locationIcon = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 310px;
 }
 
 .session-changes {
