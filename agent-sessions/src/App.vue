@@ -186,6 +186,7 @@ onUnmounted(() => {
   background-color: #181818;
   color: var(--vscode-sideBar-foreground);
   border: 1px solid #3c3c3c;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -285,12 +286,16 @@ onUnmounted(() => {
 
 .session-list-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 4px 0;
+  position: relative;
+  scrollbar-gutter: stable;
 }
 
 .session-list-container::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+  position: absolute;
+  right: 0;
 }
 
 .session-list-container::-webkit-scrollbar-track {
@@ -299,11 +304,14 @@ onUnmounted(() => {
 
 .session-list-container::-webkit-scrollbar-thumb {
   background: var(--vscode-scrollbarSlider-background);
-  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .session-list-container::-webkit-scrollbar-thumb:hover {
   background: var(--vscode-scrollbarSlider-hoverBackground);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .chat-container {
