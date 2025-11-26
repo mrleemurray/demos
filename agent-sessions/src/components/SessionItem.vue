@@ -32,7 +32,7 @@ const statusIcon = computed(() => {
   
   switch (props.session.status) {
     case 'Complete': return 'issue-closed';
-    case 'Running': return 'loading~spin';
+    case 'Running': return 'loading codicon-modifier-spin';
     case 'Failed': return 'error';
     default: return 'circle-outline';
   }
@@ -104,8 +104,8 @@ const locationIcon = computed(() => {
 
 .archive-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -180,6 +180,7 @@ const locationIcon = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding-right: 24px;
 }
 
 .session-title {
@@ -187,6 +188,9 @@ const locationIcon = computed(() => {
   line-height: 1.4;
   color: var(--vscode-foreground);
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .session-item.unread .session-title {

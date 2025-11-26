@@ -78,11 +78,29 @@ const activeSessions = ref([
     timestamp: now - 45 * 60 * 1000, // 45 min ago
     changes: { added: 78, removed: 134 },
     unread: false
+  },
+  {
+    id: 8,
+    title: 'Building user dashboard components',
+    status: 'Running',
+    icon: 'loading codicon-modifier-spin',
+    location: 'Local',
+    timestamp: now,
+    unread: false
+  },
+  {
+    id: 9,
+    title: 'Setting up CI/CD pipeline configuration',
+    status: 'Running',
+    icon: 'loading codicon-modifier-spin',
+    location: 'Background',
+    timestamp: now,
+    unread: true
   }
 ]);
 
 const archivedSessions = ref([]);
-const isArchivedExpanded = ref(true);
+const isArchivedExpanded = ref(false);
 const showAllSessions = ref(false);
 const currentTime = ref(Date.now());
 
@@ -262,7 +280,52 @@ const handleKeyPress = (e) => {
   }
 };
 
+const completeRunningSession = (sessionId, completionTime) => {
+  const session = activeSessions.value.find(s => s.id === sessionId);
+  if (session && session.status === 'Running') {
+    session.status = 'Complete';
+    session.icon = 'issue-closed';
+    session.timestamp = Date.now();
+    session.unread = true; // Mark as unread when completed
+    session.changes = { 
+      added: Math.floor(Math.random() * 200) + 50, 
+      removed: Math.floor(Math.random() * 50) + 5 
+    };
+    console.log(`Session ${sessionId} completed after ${completionTime}ms`);
+  }
+};
+
+const addNewSession = (messageText) => {
+  const newId = Math.max(...activeSessions.value.map(s => s.id)) + 1;
+  const locations = ['Local', 'Cloud', 'Background'];
+  const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+  
+  const newSession = {
+    id: newId,
+    title: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+    status: 'Running',
+    icon: 'loading codicon-modifier-spin',
+    location: randomLocation,
+    timestamp: Date.now(),
+    unread: true
+  };
+  
+  activeSessions.value.unshift(newSession);
+  
+  // Schedule completion after 8-15 seconds
+  const completionTime = Math.floor(Math.random() * 7000) + 8000;
+  const timeout = setTimeout(() => completeRunningSession(newId, completionTime), completionTime);
+  sessionCompletionTimeouts.push(timeout);
+  
+  console.log(`New session ${newId} created, will complete in ${completionTime}ms`);
+};
+
+defineExpose({
+  addNewSession
+});
+
 let timeUpdateInterval;
+let sessionCompletionTimeouts = [];
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress);
@@ -271,6 +334,20 @@ onMounted(() => {
   timeUpdateInterval = setInterval(() => {
     currentTime.value = Date.now();
   }, 10000);
+  
+  // Schedule completion for running sessions
+  const runningSession1 = activeSessions.value.find(s => s.id === 8);
+  const runningSession2 = activeSessions.value.find(s => s.id === 9);
+  
+  if (runningSession1) {
+    const timeout1 = setTimeout(() => completeRunningSession(8, 12000), 12000); // 12 seconds
+    sessionCompletionTimeouts.push(timeout1);
+  }
+  
+  if (runningSession2) {
+    const timeout2 = setTimeout(() => completeRunningSession(9, 18000), 18000); // 18 seconds
+    sessionCompletionTimeouts.push(timeout2);
+  }
 });
 
 onUnmounted(() => {
@@ -278,6 +355,8 @@ onUnmounted(() => {
   if (timeUpdateInterval) {
     clearInterval(timeUpdateInterval);
   }
+  // Clear all session completion timeouts
+  sessionCompletionTimeouts.forEach(timeout => clearTimeout(timeout));
 });
 </script>
 

@@ -10,12 +10,35 @@ const attachedFiles = ref([]);
 const pendingContext = ref(0);
 const locationFilter = ref(['All']);
 const showFilterMenu = ref(false);
+const isInputFocused = ref(false);
+const sessionListRef = ref(null);
+
+const handleInputFocus = () => {
+  isInputFocused.value = true;
+  if (!message.value) {
+    message.value = 'Sending a new message here would start a new session & move you to the chat view';
+  }
+}
+
+const handleInputBlur = () => {
+  isInputFocused.value = false;
+  // Don't clear immediately - use timeout to allow send button click to process first
+  setTimeout(() => {
+    if (message.value === 'Sending a new message here would start a new session & move you to the chat view') {
+      message.value = '';
+    }
+  }, 100);
+}
 
 const handleSend = () => {
-  console.log('Message sent:', message.value);
-  console.log('Mode:', chatMode.value);
-  console.log('Model:', selectedModel.value);
-  console.log('Files:', attachedFiles.value);
+  if (!message.value.trim()) {
+    return;
+  }
+  
+  // Create new session in the list
+  if (sessionListRef.value) {
+    sessionListRef.value.addNewSession(message.value);
+  }
   
   // Clear after send
   message.value = '';
@@ -126,7 +149,7 @@ onUnmounted(() => {
     </div>
     
     <div class="session-list-container">
-      <SessionList :location-filter="locationFilter" />
+      <SessionList ref="sessionListRef" :location-filter="locationFilter" />
     </div>
     
     <div class="chat-container">
@@ -140,6 +163,8 @@ onUnmounted(() => {
         @send="handleSend"
         @attach="handleAttach"
         @remove-file="handleRemoveFile"
+        @focus="handleInputFocus"
+        @blur="handleInputBlur"
       />
     </div>
   </div>

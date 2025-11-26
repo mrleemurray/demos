@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import '@vscode/codicons/dist/codicon.css'
 import CustomDropdown from './CustomDropdown.vue'
 
@@ -36,7 +36,9 @@ const emit = defineEmits([
   'update:selectedModel',
   'send',
   'attach',
-  'removeFile'
+  'removeFile',
+  'focus',
+  'blur'
 ])
 
 const textarea = ref(null)
@@ -93,6 +95,16 @@ const handleKeyDown = (e) => {
   }
 }
 
+const handleFocus = () => {
+  isFocused.value = true
+  emit('focus')
+}
+
+const handleBlur = () => {
+  isFocused.value = false
+  emit('blur')
+}
+
 const handleAttachment = () => {
   emit('attach')
 }
@@ -100,6 +112,13 @@ const handleAttachment = () => {
 const removeFile = (index) => {
   emit('removeFile', index)
 }
+
+// Watch for changes in message value and adjust height
+watch(message, () => {
+  nextTick(() => {
+    handleInput()
+  })
+})
 </script>
 
 <template>
@@ -136,8 +155,8 @@ const removeFile = (index) => {
         v-model="message"
         @input="handleInput"
         @keydown="handleKeyDown"
-        @focus="isFocused = true"
-        @blur="isFocused = false"
+        @focus="handleFocus"
+        @blur="handleBlur"
         :placeholder="placeholder"
         rows="1"
         class="chat-textarea"
@@ -355,7 +374,6 @@ const removeFile = (index) => {
 
 .chat-textarea {
   flex: 1;
-  height: 24px !important;
   min-height: 24px;
   max-height: 200px;
   padding: 4px 0;
@@ -367,7 +385,7 @@ const removeFile = (index) => {
   font-size: 13px;
   line-height: 20px;
   resize: none;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .chat-textarea::placeholder {
