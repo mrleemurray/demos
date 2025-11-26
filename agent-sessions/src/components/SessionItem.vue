@@ -42,6 +42,38 @@ const statusClass = computed(() => {
   return props.session.status.toLowerCase();
 });
 
+const iconColor = computed(() => {
+  const icon = statusIcon.value;
+  
+  // Check for specific git icons first (MOST specific to least specific - order matters!)
+  if (icon === 'git-pull-request-draft') {
+    return '#8c8c8c';
+  }
+  if (icon === 'git-pull-request-closed') {
+    return '#f48771';
+  }
+  if (icon === 'git-merge') {
+    return '#b180d7';
+  }
+  if (icon === 'git-pull-request') {
+    return '#73c991';
+  }
+  
+  // Check for other icon types
+  if (icon === 'issue-closed') {
+    return 'var(--vscode-testing-iconPassed, #73c991)';
+  }
+  if (icon.includes('loading')) {
+    return 'var(--vscode-progressBar-background, #0e70c0)';
+  }
+  if (icon === 'error') {
+    return 'var(--vscode-testing-iconFailed, #f48771)';
+  }
+  
+  // Default color
+  return 'var(--vscode-foreground)';
+});
+
 const locationIcon = computed(() => {
   switch (props.session.location) {
     case 'Local': return 'device-desktop';
@@ -64,7 +96,7 @@ const locationIcon = computed(() => {
     </button>
     <div class="session-header">
       <div class="session-icon">
-        <i :class="`codicon codicon-${statusIcon} ${statusClass}`"></i>
+        <i :class="`codicon codicon-${statusIcon}`"></i>
         <div v-if="unread" class="unread-badge"></div>
       </div>
       <div class="session-title-wrapper">
@@ -149,6 +181,7 @@ const locationIcon = computed(() => {
 .session-icon i {
   font-size: 16px;
   color: var(--vscode-foreground);
+  transition: color 0.15s ease;
 }
 
 .unread-badge {
@@ -162,15 +195,28 @@ const locationIcon = computed(() => {
   border: 1.5px solid #1f1f1f;
 }
 
-.session-item:hover .session-icon .complete {
+/* Icon hover colors based on icon type only */
+.session-item:hover .session-icon i.codicon-git-pull-request {
+  color: #73c991 !important; /* Green */
+}
+
+.session-item:hover .session-icon i.codicon-git-pull-request-closed {
+  color: #f48771 !important; /* Red */
+}
+
+.session-item:hover .session-icon i.codicon-git-merge {
+  color: #b180d7 !important; /* Purple */
+}
+
+.session-item:hover .session-icon i.codicon-git-pull-request-draft {
+  color: #8c8c8c !important; /* Grey */
+}
+
+.session-item:hover .session-icon i.codicon-issue-closed {
   color: var(--vscode-testing-iconPassed, #73c991);
 }
 
-.session-item:hover .session-icon .running {
-  color: var(--vscode-progressBar-background, #0e70c0);
-}
-
-.session-item:hover .session-icon .failed {
+.session-item:hover .session-icon i.codicon-error {
   color: var(--vscode-testing-iconFailed, #f48771);
 }
 

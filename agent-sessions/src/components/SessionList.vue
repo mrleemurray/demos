@@ -35,7 +35,7 @@ const activeSessions = ref([
     id: 3,
     title: 'Refining preview layout and icons',
     status: 'Complete',
-    icon: 'git-pull-request-closed',
+    icon: 'git-merge',
     location: 'Local',
     timestamp: now - 1 * 60 * 1000, // 1 min ago
     unread: false
@@ -96,6 +96,24 @@ const activeSessions = ref([
     location: 'Background',
     timestamp: now,
     unread: true
+  },
+  {
+    id: 10,
+    title: 'Draft: Experimental feature flag implementation',
+    status: 'Draft',
+    icon: 'git-pull-request-draft',
+    location: 'Cloud',
+    timestamp: now - 3 * 60 * 1000, // 3 min ago
+    unread: false
+  },
+  {
+    id: 11,
+    title: 'Updating documentation for API changes',
+    status: 'Complete',
+    icon: 'git-pull-request-closed',
+    location: 'Local',
+    timestamp: now - 20 * 60 * 1000, // 20 min ago
+    unread: false
   }
 ]);
 
