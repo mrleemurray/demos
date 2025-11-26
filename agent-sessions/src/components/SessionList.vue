@@ -435,7 +435,6 @@ onUnmounted(() => {
 
 .list-header {
   font-size: 11px;
-  font-weight: 600;
   text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
   padding: 0 16px;
@@ -448,7 +447,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   user-select: none;
-  transition: color 0.1s;
 }
 
 .list-header.collapsible:hover {

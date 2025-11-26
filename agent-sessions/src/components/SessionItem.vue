@@ -96,8 +96,7 @@ const locationIcon = computed(() => {
     </button>
     <div class="session-header">
       <div class="session-icon">
-        <i :class="`codicon codicon-${statusIcon}`"></i>
-        <div v-if="unread" class="unread-badge"></div>
+        <i :class="unread ? 'codicon codicon-circle-filled unread-icon' : `codicon codicon-${statusIcon}`"></i>
       </div>
       <div class="session-title-wrapper">
         <div class="session-title">{{ session.title }}</div>
@@ -147,7 +146,6 @@ const locationIcon = computed(() => {
   justify-content: center;
   color: var(--vscode-foreground);
   opacity: 0.7;
-  transition: opacity 0.2s;
   z-index: 10;
 }
 
@@ -181,18 +179,10 @@ const locationIcon = computed(() => {
 .session-icon i {
   font-size: 16px;
   color: var(--vscode-foreground);
-  transition: color 0.15s ease;
 }
 
-.unread-badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  background-color: var(--vscode-focusBorder, #007acc);
-  border-radius: 50%;
-  border: 1.5px solid #1f1f1f;
+.unread-icon {
+  color: var(--vscode-focusBorder, #007acc) !important;
 }
 
 /* Icon hover colors based on icon type only */
@@ -237,10 +227,6 @@ const locationIcon = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.session-item.unread .session-title {
-  font-weight: 600;
 }
 
 .session-changes {
