@@ -6,6 +6,10 @@ const props = defineProps({
   locationFilter: {
     type: Array,
     default: () => ['All']
+  },
+  compactMode: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -371,7 +375,7 @@ onUnmounted(() => {
 <template>
   <div class="sessions-container">
     <div class="list-section">
-      <div class="session-list">
+      <div class="session-list" :class="{ 'compact': compactMode }">
         <div 
           v-for="(session, index) in sortedActiveSessions" 
           :key="session.id"
@@ -383,7 +387,7 @@ onUnmounted(() => {
           @dragend="handleDragEnd"
           @click="handleSessionClick(session)"
         >
-          <SessionItem :session="session" :unread="session.unread" @archive="handleArchive(session.id, 'active')" />
+          <SessionItem :session="session" :unread="session.unread" :compact-mode="compactMode" @archive="handleArchive(session.id, 'active')" />
         </div>
       </div>
       
@@ -401,7 +405,7 @@ onUnmounted(() => {
         <i :class="`codicon codicon-chevron-${isArchivedExpanded ? 'down' : 'right'}`"></i>
         Archived
       </div>
-      <div v-if="isArchivedExpanded" class="session-list">
+      <div v-if="isArchivedExpanded" class="session-list" :class="{ 'compact': compactMode }">
         <div 
           v-for="(session, index) in sortedArchivedSessions" 
           :key="session.id"
@@ -413,7 +417,7 @@ onUnmounted(() => {
           @dragend="handleDragEnd"
           @click="handleSessionClick(session)"
         >
-          <SessionItem :session="session" :archived="true" :unread="session.unread" @archive="handleArchive(session.id, 'archived')" />
+          <SessionItem :session="session" :archived="true" :unread="session.unread" :compact-mode="compactMode" @archive="handleArchive(session.id, 'archived')" />
         </div>
       </div>
     </div>
@@ -462,8 +466,15 @@ onUnmounted(() => {
   flex-direction: column;
   margin: 0px 8px;
   background-color: #181818;
-  border-radius: 5px;
   overflow: hidden;
+  gap: 8px;
+}
+
+.session-list.compact {
+  margin: 0;
+  background-color: transparent;
+  border-radius: 0;
+  gap: 0px;
 }
 
 .session-list > div {

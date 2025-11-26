@@ -13,6 +13,10 @@ const props = defineProps({
   unread: {
     type: Boolean,
     default: false
+  },
+  compactMode: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -85,7 +89,7 @@ const locationIcon = computed(() => {
 </script>
 
 <template>
-  <div class="session-item" :class="{ 'unread': unread }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+  <div class="session-item" :class="{ 'unread': unread, 'compact': compactMode }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
     <button 
       v-if="isHovered" 
       class="archive-button" 
@@ -127,6 +131,13 @@ const locationIcon = computed(() => {
   cursor: pointer;
   background-color: #1f1f1f;
   position: relative;
+  border-radius: 4px;
+}
+
+.session-item.compact {
+  padding: 8px 8px;
+  background-color: transparent;
+  border-radius: 0px;;
 }
 
 .session-item:hover {

@@ -12,6 +12,11 @@ const locationFilter = ref(['All']);
 const showFilterMenu = ref(false);
 const isInputFocused = ref(false);
 const sessionListRef = ref(null);
+const compactMode = ref(false);
+
+const toggleCompactMode = () => {
+  compactMode.value = !compactMode.value;
+};
 
 const handleInputFocus = () => {
   isInputFocused.value = true;
@@ -142,14 +147,14 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        <button class="action-icon" title="More">
+        <button class="action-icon" @click="toggleCompactMode" title="More">
           <i class="codicon codicon-ellipsis"></i>
         </button>
       </div>
     </div>
     
     <div class="session-list-container">
-      <SessionList ref="sessionListRef" :location-filter="locationFilter" />
+      <SessionList ref="sessionListRef" :location-filter="locationFilter" :compact-mode="compactMode" />
     </div>
     
     <div class="chat-container">
