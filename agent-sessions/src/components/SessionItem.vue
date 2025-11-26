@@ -54,7 +54,6 @@ const locationIcon = computed(() => {
 
 <template>
   <div class="session-item" :class="{ 'unread': unread }" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
-    <div v-if="unread" class="unread-indicator"></div>
     <button 
       v-if="isHovered" 
       class="archive-button" 
@@ -66,6 +65,7 @@ const locationIcon = computed(() => {
     <div class="session-header">
       <div class="session-icon">
         <i :class="`codicon codicon-${statusIcon} ${statusClass}`"></i>
+        <div v-if="unread" class="unread-badge"></div>
       </div>
       <div class="session-title-wrapper">
         <div class="session-title">{{ session.title }}</div>
@@ -100,15 +100,6 @@ const locationIcon = computed(() => {
 
 .session-item:hover {
   background-color: #2b2d2e;
-}
-
-.unread-indicator {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background-color: var(--vscode-focusBorder, #007acc);
 }
 
 .archive-button {
@@ -152,11 +143,23 @@ const locationIcon = computed(() => {
   height: 20px;
   margin-top: 1px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .session-icon i {
   font-size: 16px;
   color: var(--vscode-foreground);
+}
+
+.unread-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--vscode-focusBorder, #007acc);
+  border-radius: 50%;
+  border: 1.5px solid #1f1f1f;
 }
 
 .session-item:hover .session-icon .complete {
