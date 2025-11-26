@@ -180,6 +180,7 @@ onUnmounted(() => {
   max-width: 400px;
   background-color: #181818;
   color: var(--vscode-sideBar-foreground);
+  border: 1px solid #3c3c3c;
 }
 
 .panel-header {

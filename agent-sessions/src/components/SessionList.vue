@@ -291,13 +291,6 @@ const simulateNewMessage = () => {
   }
 };
 
-const handleKeyPress = (e) => {
-  // Press 'n' to simulate a new unread message
-  if (e.key === 'n' || e.key === 'N') {
-    simulateNewMessage();
-  }
-};
-
 const completeRunningSession = (sessionId, completionTime) => {
   const session = activeSessions.value.find(s => s.id === sessionId);
   if (session && session.status === 'Running') {
@@ -346,8 +339,6 @@ let timeUpdateInterval;
 let sessionCompletionTimeouts = [];
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyPress);
-  
   // Update time every 10 seconds
   timeUpdateInterval = setInterval(() => {
     currentTime.value = Date.now();
@@ -369,7 +360,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyPress);
   if (timeUpdateInterval) {
     clearInterval(timeUpdateInterval);
   }
