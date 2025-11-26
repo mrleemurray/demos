@@ -2,6 +2,13 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import SessionItem from './SessionItem.vue';
 
+const props = defineProps({
+  locationFilter: {
+    type: Array,
+    default: () => ['All']
+  }
+});
+
 const now = Date.now();
 
 const activeSessions = ref([
@@ -96,7 +103,13 @@ const formatRelativeTime = (timestamp) => {
 
 // Computed sorted sessions - unread items first, then by time
 const sortedActiveSessions = computed(() => {
-  const sorted = [...activeSessions.value].map(session => ({
+  // First filter by location
+  let filtered = activeSessions.value;
+  if (!props.locationFilter.includes('All')) {
+    filtered = filtered.filter(s => props.locationFilter.includes(s.location));
+  }
+  
+  const sorted = [...filtered].map(session => ({
     ...session,
     time: formatRelativeTime(session.timestamp)
   })).sort((a, b) => {
@@ -125,7 +138,13 @@ const sortedActiveSessions = computed(() => {
 });
 
 const sortedArchivedSessions = computed(() => {
-  return [...archivedSessions.value].map(session => ({
+  // First filter by location
+  let filtered = archivedSessions.value;
+  if (!props.locationFilter.includes('All')) {
+    filtered = filtered.filter(s => props.locationFilter.includes(s.location));
+  }
+  
+  return [...filtered].map(session => ({
     ...session,
     time: formatRelativeTime(session.timestamp)
   })).sort((a, b) => {
@@ -282,7 +301,7 @@ onUnmounted(() => {
       </div>
       
       <button 
-        v-if="!showAllSessions && activeSessions.length > 3" 
+        v-if="!showAllSessions && sortedActiveSessions.length >= 3" 
         class="show-all-button"
         @click="showAllSessions = true"
       >

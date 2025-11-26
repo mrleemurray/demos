@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import SessionList from './components/SessionList.vue';
 import ChatInputBox from './components/ChatInputBox.vue';
 
@@ -8,6 +8,8 @@ const chatMode = ref('agent');
 const selectedModel = ref('claude');
 const attachedFiles = ref([]);
 const pendingContext = ref(0);
+const locationFilter = ref(['All']);
+const showFilterMenu = ref(false);
 
 const handleSend = () => {
   console.log('Message sent:', message.value);
@@ -39,22 +41,92 @@ const handleRemoveFile = (index) => {
   pendingContext.value -= file.tokens;
   attachedFiles.value.splice(index, 1);
 }
+
+const toggleFilterMenu = () => {
+  showFilterMenu.value = !showFilterMenu.value;
+}
+
+const toggleFilter = (filter) => {
+  if (filter === 'All') {
+    locationFilter.value = ['All'];
+  } else {
+    // Remove 'All' if it exists
+    const filters = locationFilter.value.filter(f => f !== 'All');
+    
+    // Toggle the selected filter
+    const index = filters.indexOf(filter);
+    if (index > -1) {
+      filters.splice(index, 1);
+    } else {
+      filters.push(filter);
+    }
+    
+    // If no filters selected, default to 'All'
+    locationFilter.value = filters.length === 0 ? ['All'] : filters;
+  }
+  
+  // Always close the menu after a selection
+  showFilterMenu.value = false;
+}
+
+const isFilterSelected = (filter) => {
+  return locationFilter.value.includes(filter);
+}
+
+const handleClickOutside = (event) => {
+  const filterContainer = document.querySelector('.filter-container');
+  if (filterContainer && !filterContainer.contains(event.target)) {
+    showFilterMenu.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
   <div class="app-container">
     <div class="panel-header">
       <div class="header-content">
-        <h2>AGENT SESSIONS</h2>
+        <h2>AGENTS</h2>
       </div>
       <div class="header-actions">
-        <vscode-icon name="refresh" class="action-icon"></vscode-icon>
-        <vscode-icon name="settings-gear" class="action-icon"></vscode-icon>
+        <button class="action-icon" title="Refresh">
+          <i class="codicon codicon-refresh"></i>
+        </button>
+        <button class="action-icon" title="Search">
+          <i class="codicon codicon-search"></i>
+        </button>
+        <div class="filter-container">
+          <button class="action-icon" @click="toggleFilterMenu" :title="`Filter: ${locationFilter.join(', ')}`">
+            <i class="codicon codicon-list-filter"></i>
+          </button>
+          <div v-if="showFilterMenu" class="filter-menu">
+            <div 
+              v-for="option in ['All', 'Cloud', 'Local', 'Background']" 
+              :key="option"
+              class="filter-option"
+              :class="{ 'selected': isFilterSelected(option) }"
+              @click="toggleFilter(option)"
+            >
+              <i v-if="isFilterSelected(option)" class="codicon codicon-check"></i>
+              <span>{{ option }}</span>
+            </div>
+          </div>
+        </div>
+        <button class="action-icon" title="More">
+          <i class="codicon codicon-ellipsis"></i>
+        </button>
       </div>
     </div>
     
     <div class="session-list-container">
-      <SessionList />
+      <SessionList :location-filter="locationFilter" />
     </div>
     
     <div class="chat-container">
@@ -64,7 +136,7 @@ const handleRemoveFile = (index) => {
         v-model:selected-model="selectedModel"
         :attached-files="attachedFiles"
         :pending-context="pendingContext"
-        placeholder="Ask a question or describe what to build..."
+        placeholder="Start a new session..."
         @send="handleSend"
         @attach="handleAttach"
         @remove-file="handleRemoveFile"
@@ -77,7 +149,8 @@ const handleRemoveFile = (index) => {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 48px);
+  margin: 24px 0px;
   width: 100%;
   max-width: 400px;
   background-color: #181818;
@@ -101,25 +174,82 @@ const handleRemoveFile = (index) => {
 
 .header-content h2 {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 400;
   margin: 0;
   text-transform: uppercase;
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 2px;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.filter-container {
+  position: relative;
 }
 
 .action-icon {
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-icon:hover {
   background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.action-icon i {
+  font-size: 16px;
+}
+
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: var(--vscode-dropdown-background, #1b1b1b);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  min-width: 140px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--vscode-dropdown-foreground);
+  transition: background-color 0.1s;
+}
+
+.filter-option:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.filter-option.selected {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.filter-option i {
+  font-size: 16px;
+  width: 16px;
+}
+
+.filter-option span {
+  flex: 1;
 }
 
 .session-list-container {
