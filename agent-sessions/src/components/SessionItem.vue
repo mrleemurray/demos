@@ -135,7 +135,7 @@ const locationIcon = computed(() => {
 }
 
 .session-item.compact {
-  padding: 8px 8px;
+  padding: 8px 16px 8px 8px;
   background-color: transparent;
   border-radius: 0px;;
 }
@@ -147,7 +147,7 @@ const locationIcon = computed(() => {
 .archive-button {
   position: absolute;
   top: 6px;
-  right: 6px;
+  right: 14px;
   background: transparent;
   border: none;
   cursor: pointer;
