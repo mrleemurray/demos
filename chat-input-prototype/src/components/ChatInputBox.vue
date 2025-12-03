@@ -27,6 +27,46 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'Describe what to build next'
+  },
+  contextUsagePercent: {
+    type: Number,
+    default: 0
+  },
+  progressBarColor: {
+    type: String,
+    default: '#cccccc'
+  },
+  totalTokensUsed: {
+    type: Number,
+    default: 0
+  },
+  contextLimit: {
+    type: Number,
+    default: 64
+  },
+  systemPromptTokens: {
+    type: Number,
+    default: 0
+  },
+  systemToolsTokens: {
+    type: Number,
+    default: 0
+  },
+  mcpToolsTokens: {
+    type: Number,
+    default: 0
+  },
+  messagesTextTokens: {
+    type: Number,
+    default: 0
+  },
+  messagesFilesTokens: {
+    type: Number,
+    default: 0
+  },
+  tooltipBackground: {
+    type: String,
+    default: '#2d2d30'
   }
 })
 
@@ -36,11 +76,14 @@ const emit = defineEmits([
   'update:selectedModel',
   'send',
   'attach',
-  'removeFile'
+  'removeFile',
+  'resetSession'
 ])
 
 const textarea = ref(null)
 const isFocused = ref(false)
+const isContextHovered = ref(false)
+const isTooltipOpen = ref(false)
 
 const message = computed({
   get: () => props.modelValue,
@@ -100,10 +143,28 @@ const handleAttachment = () => {
 const removeFile = (index) => {
   emit('removeFile', index)
 }
+
+const toggleTooltip = () => {
+  isTooltipOpen.value = !isTooltipOpen.value
+  isContextHovered.value = isTooltipOpen.value
+}
+
+const handleClickOutside = (event) => {
+  const progressArea = event.target.closest('.progress-ring-wrapper')
+  const tooltipArea = event.target.closest('.context-tooltip')
+  if (!progressArea && !tooltipArea && isTooltipOpen.value) {
+    isTooltipOpen.value = false
+    isContextHovered.value = false
+  }
+}
+
+const resetSession = () => {
+  emit('resetSession')
+}
 </script>
 
 <template>
-  <div class="chat-input-wrapper" :class="{ focused: isFocused }">
+  <div class="chat-input-wrapper" :class="{ focused: isFocused }" @click="handleClickOutside">
     <div class="attachment-row">
       <div class="attachments-section">
         <button class="attachment-button" @click="handleAttachment" title="Attach files">
@@ -121,11 +182,86 @@ const removeFile = (index) => {
       </div>
       
       <div class="context-info-wrapper">
-        <div class="context-info">
-          <span 
-            v-if="pendingContext > 0"
-            class="pending-context"
-          >+{{ pendingContext.toFixed(1) }}k</span>
+        <div class="progress-ring-wrapper"
+          @mouseenter="isContextHovered = true"
+          @mouseleave="() => { if (!isTooltipOpen) isContextHovered = false }">
+          <svg class="progress-ring" width="20" height="20" viewBox="0 0 20 20" @click.stop="toggleTooltip" style="cursor: pointer;">
+            <circle
+              class="progress-ring-background"
+              cx="10"
+              cy="10"
+              r="8"
+              fill="none"
+              stroke-width="2"
+            />
+            <circle
+              class="progress-ring-progress"
+              cx="10"
+              cy="10"
+              r="8"
+              fill="none"
+              stroke-width="2"
+              :stroke="progressBarColor"
+              :stroke-dasharray="50.27"
+              :stroke-dashoffset="50.27 - (50.27 * Math.min(contextUsagePercent, 100)) / 100"
+              transform="rotate(-90 10 10)"
+            />
+          </svg>
+          
+          <div v-if="isContextHovered || isTooltipOpen" class="tooltip-container" @mouseenter="isContextHovered = true" @mouseleave="() => { if (!isTooltipOpen) isContextHovered = false }">
+            <div class="context-tooltip" :style="{ background: tooltipBackground }" @click.stop>
+            <div class="progress-bar" :style="{ background: progressBarColor + '4D' }">
+              <div class="progress-fill" :style="{ width: contextUsagePercent + '%', background: progressBarColor }"></div>
+            </div>
+            <div class="tooltip-title">
+              <template v-if="contextUsagePercent >= 100">
+                Token limit reached
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                Nearing input token limit
+              </template>
+            </div>
+            <div class="tooltip-breakdown">
+              <div class="breakdown-row">
+                <span class="breakdown-label">Total usage</span>
+                <span class="breakdown-value">{{ totalTokensUsed.toFixed(1) }}k / {{ contextLimit }}k • {{ Math.round(contextUsagePercent) }}%</span>
+              </div>
+              <div class="breakdown-separator"></div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">System prompt</span>
+                <span class="breakdown-value">{{ Math.round((systemPromptTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">System tools</span>
+                <span class="breakdown-value">{{ Math.round((systemToolsTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">MCP tools</span>
+                <span class="breakdown-value">{{ Math.round((mcpToolsTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Attached files</span>
+                <span class="breakdown-value">{{ Math.round((messagesTextTokens / contextLimit) * 100) }}%</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Messages</span>
+                <span class="breakdown-value">{{ Math.round((messagesFilesTokens / contextLimit) * 100) }}%</span>
+              </div>
+            </div>
+            <div class="tooltip-subtitle">
+              <template v-if="contextUsagePercent >= 100">
+                <a @click="resetSession" style="cursor: pointer;">Start a new session</a> to continue.
+              </template>
+              <template v-else-if="contextUsagePercent > 50">
+                <a @click="resetSession" style="cursor: pointer;">Start a new session</a> to increase limit.
+              </template>
+              <template v-else>
+                Adding files and large requests will consume more tokens.
+              </template>
+            </div>
+            <div class="tooltip-arrow" :style="{ borderTopColor: tooltipBackground }"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -271,6 +407,119 @@ const removeFile = (index) => {
   flex-shrink: 0;
   align-self: flex-start;
   min-width: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-ring-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.progress-ring {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.progress-ring-background {
+  stroke: var(--vscode-input-border, #ffffff22);
+}
+
+.progress-ring-progress {
+  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+}
+
+.tooltip-container {
+  position: absolute;
+  bottom: 100%;
+  right: 0px;
+  bottom: 20px;
+  padding-bottom: 16px;
+  z-index: 1000;
+}
+
+.context-tooltip {
+  width: 325px;
+  padding: 8px;
+  background: var(--vscode-editorHoverWidget-background, #2d2d30);
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: none;
+}
+
+.tooltip-arrow {
+  position: absolute;
+  bottom: 10px;
+  right: 4px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid;
+  border-top-color: inherit;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.tooltip-title {
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--vscode-foreground, #cccccc);
+  margin-bottom: 8px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.tooltip-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.breakdown-label {
+  color: var(--vscode-descriptionForeground, #999999);
+}
+
+.breakdown-value {
+  color: var(--vscode-foreground, #cccccc);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-separator {
+  height: 1px;
+  background: var(--vscode-input-border, #3c3c3c);
+  margin: 4px 0;
+}
+
+.tooltip-subtitle {
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--vscode-descriptionForeground, #999999);
+  line-height: 1.4;
+  text-align: left;
 }
 
 .context-info {
@@ -439,5 +688,10 @@ const removeFile = (index) => {
   .chat-textarea::placeholder {
     color: #8a8a8a;
   }
+
+  
+}
+a {
+  color: #4daafc;
 }
 </style>
