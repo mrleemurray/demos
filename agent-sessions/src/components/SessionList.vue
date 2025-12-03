@@ -375,6 +375,9 @@ onUnmounted(() => {
 <template>
   <div class="sessions-container">
     <div class="list-section">
+      <div v-if="!showAllSessions" class="list-header">
+        Recent Sessions
+      </div>
       <div class="session-list" :class="{ 'compact': compactMode }">
         <div 
           v-for="(session, index) in sortedActiveSessions" 

@@ -13,9 +13,37 @@ const showFilterMenu = ref(false);
 const isInputFocused = ref(false);
 const sessionListRef = ref(null);
 const compactMode = ref(false);
+const panelWidth = ref(400);
+const isResizing = ref(false);
+const resizeStartX = ref(0);
+const resizeStartWidth = ref(0);
 
 const toggleCompactMode = () => {
   compactMode.value = !compactMode.value;
+};
+
+const startResize = (e) => {
+  isResizing.value = true;
+  resizeStartX.value = e.clientX;
+  resizeStartWidth.value = panelWidth.value;
+  document.addEventListener('mousemove', handleResize);
+  document.addEventListener('mouseup', stopResize);
+  e.preventDefault();
+};
+
+const handleResize = (e) => {
+  if (!isResizing.value) return;
+  
+  const deltaX = e.clientX - resizeStartX.value;
+  const newWidth = resizeStartWidth.value + deltaX;
+  // Clamp width between 300px and 800px
+  panelWidth.value = Math.max(350, Math.min(800, newWidth));
+};
+
+const stopResize = () => {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
 };
 
 const handleInputFocus = () => {
@@ -114,11 +142,14 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
 });
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :style="{ width: `${panelWidth}px` }">
+    <div class="resize-handle" @mousedown="startResize"></div>
     <div class="panel-header">
       <div class="header-content">
         <h2>AGENTS</h2>
@@ -182,11 +213,33 @@ onUnmounted(() => {
   height: calc(100vh - 48px);
   margin: 24px 0px;
   width: 100%;
-  max-width: 400px;
+  max-width: 800px;
+  min-width: 300px;
   background-color: #181818;
   color: var(--vscode-sideBar-foreground);
   border: 1px solid #3c3c3c;
   overflow: hidden;
+  position: relative;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1000;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.resize-handle:hover {
+  background-color: var(--vscode-focusBorder, #007acc);
+}
+
+.resize-handle:active {
+  background-color: var(--vscode-focusBorder, #007acc);
 }
 
 .panel-header {

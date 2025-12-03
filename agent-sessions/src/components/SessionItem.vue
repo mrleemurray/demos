@@ -244,8 +244,10 @@ const locationIcon = computed(() => {
   display: flex;
   gap: 6px;
   font-size: 12px;
-  /* font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, 'Courier New', monospace); */
   font-weight: 500;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background-color: #5A5D5E33;
 }
 
 .changes-added {
