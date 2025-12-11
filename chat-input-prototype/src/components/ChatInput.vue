@@ -604,12 +604,12 @@ const simulateAgentResponse = () => {
   font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-weight: 400;
-  color: var(--vscode-foreground, #cccccc);
+  color: var(--vscode-descriptionForeground, #999999);
   margin: 0;
-  padding: 0px 6px;
   display: inline-flex;
   height: 35px;
   align-items: center;
+  text-transform: uppercase;
 }
 
 .title-input {
