@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<!--
+  Copyright (c) Microsoft Corporation. All rights reserved.
+  Licensed under the MIT License. See License.txt in the project root for license information.
+
+  2026 Theme Blur Effects Test App
+  Deploy to GitHub Pages to test blur effects across browsers
+-->
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>2026 Theme - Blur Effects Test</title>
+	<link rel="stylesheet" href="https://unpkg.com/@vscode/codicons/dist/codicon.css">
+	<link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+	<!-- Theme Switcher -->
+	<div class="theme-switcher">
+		<button class="theme-btn active" data-theme="dark">Dark</button>
+		<button class="theme-btn" data-theme="light">Light</button>
+	</div>
+
+	<!-- Main VS Code Layout Simulation -->
+	<div class="vscode-container">
+		<!-- Title Bar -->
+		<div class="titlebar">
+			<div class="titlebar-drag-region"></div>
+			<div class="command-center">
+				<i class="codicon codicon-search"></i>
+				<span>Search or type a command</span>
+			</div>
+			<div class="window-controls">
+				<span class="control minimize"><i class="codicon codicon-chrome-minimize"></i></span>
+				<span class="control maximize"><i class="codicon codicon-chrome-maximize"></i></span>
+				<span class="control close"><i class="codicon codicon-chrome-close"></i></span>
+			</div>
+		</div>
+
+		<!-- Main Content -->
+		<div class="workbench">
+			<!-- Activity Bar -->
+			<div class="activitybar">
+				<div class="activity-item active"><i class="codicon codicon-files"></i></div>
+				<div class="activity-item"><i class="codicon codicon-search"></i></div>
+				<div class="activity-item"><i class="codicon codicon-source-control"></i></div>
+				<div class="activity-item"><i class="codicon codicon-debug-alt"></i></div>
+				<div class="activity-item"><i class="codicon codicon-extensions"></i></div>
+				<div class="activity-item badge"><i class="codicon codicon-comment-discussion"></i><span class="badge-count">3</span></div>
+			</div>
+
+			<!-- Sidebar -->
+			<div class="sidebar">
+				<div class="sidebar-header">
+					<span>EXPLORER</span>
+				</div>
+				<div class="sidebar-content">
+					<div class="tree-item folder expanded"><i class="codicon codicon-chevron-down"></i><i class="codicon codicon-folder-opened"></i> src</div>
+					<div class="tree-item file indent"><i class="codicon codicon-file-code"></i> index.ts</div>
+					<div class="tree-item file indent"><i class="codicon codicon-file-code"></i> utils.ts</div>
+					<div class="tree-item file indent modified"><i class="codicon codicon-file-code"></i> styles.css</div>
+					<div class="tree-item folder"><i class="codicon codicon-chevron-right"></i><i class="codicon codicon-folder"></i> components</div>
+					<div class="tree-item folder"><i class="codicon codicon-chevron-right"></i><i class="codicon codicon-folder"></i> services</div>
+					<div class="tree-item file"><i class="codicon codicon-file"></i> package.json</div>
+					<div class="tree-item file"><i class="codicon codicon-file"></i> tsconfig.json</div>
+				</div>
+			</div>
+
+			<!-- Editor Area -->
+			<div class="editor-area">
+				<!-- Tabs -->
+				<div class="tabs-container">
+					<div class="tab active"><i class="codicon codicon-file-code"></i> index.ts</div>
+					<div class="tab"><i class="codicon codicon-file-code"></i> utils.ts</div>
+					<div class="tab modified"><i class="codicon codicon-file-code"></i> styles.css <i class="codicon codicon-circle-filled modified-dot"></i></div>
+				</div>
+
+				<!-- Breadcrumbs -->
+				<div class="breadcrumbs">
+					<span>src</span> <i class="codicon codicon-chevron-right"></i> <span>components</span> <i class="codicon codicon-chevron-right"></i> <span>Button.tsx</span>
+				</div>
+
+				<!-- Editor Content -->
+				<div class="editor-content">
+					<div class="line-numbers">
+						<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+						<div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+						<div>11</div><div>12</div><div>13</div><div>14</div><div>15</div>
+						<div>16</div><div>17</div><div>18</div><div>19</div><div>20</div>
+						<div>21</div><div>22</div><div>23</div><div>24</div><div>25</div>
+						<div>26</div><div>27</div><div>28</div><div>29</div><div>30</div>
+						<div>31</div><div>32</div><div>33</div><div>34</div><div>35</div>
+						<div>36</div><div>37</div><div>38</div><div>39</div><div>40</div>
+						<div>41</div><div>42</div><div>43</div><div>44</div><div>45</div>
+					</div>
+					<div class="code-content">
+						<pre><code><span class="keyword">import</span> <span class="variable">React</span> <span class="keyword">from</span> <span class="string">'react'</span>;
+<span class="keyword">import</span> { <span class="variable">useState</span>, <span class="variable">useEffect</span>, <span class="variable">useCallback</span> } <span class="keyword">from</span> <span class="string">'react'</span>;
+<span class="keyword">import</span> <span class="keyword">type</span> { <span class="type">FC</span>, <span class="type">ReactNode</span> } <span class="keyword">from</span> <span class="string">'react'</span>;
+
+<span class="comment">/**
+ * Button component with blur effects and multiple variants
+ * @param props - The button properties
+ * @returns A styled button element
+ */</span>
+<span class="keyword">interface</span> <span class="type">ButtonProps</span> {
+  <span class="variable">label</span>: <span class="type">string</span>;
+  <span class="variable">onClick</span>: () =&gt; <span class="type">void</span>;
+  <span class="variable">variant</span>?: <span class="string">'primary'</span> | <span class="string">'secondary'</span> | <span class="string">'danger'</span>;
+  <span class="variable">disabled</span>?: <span class="type">boolean</span>;
+  <span class="variable">children</span>?: <span class="type">ReactNode</span>;
+}
+
+<span class="keyword">const</span> <span class="constant">BUTTON_SIZES</span> = {
+  <span class="variable">small</span>: <span class="number">24</span>,
+  <span class="variable">medium</span>: <span class="number">32</span>,
+  <span class="variable">large</span>: <span class="number">48</span>,
+} <span class="keyword">as</span> <span class="keyword">const</span>;
+
+<span class="keyword">export</span> <span class="keyword">const</span> <span class="function">Button</span>: <span class="type">FC</span>&lt;<span class="type">ButtonProps</span>&gt; = ({
+  <span class="variable">label</span>,
+  <span class="variable">onClick</span>,
+  <span class="variable">variant</span> = <span class="string">'primary'</span>,
+  <span class="variable">disabled</span> = <span class="constant">false</span>,
+  <span class="variable">children</span>,
+}) =&gt; {
+  <span class="keyword">const</span> [<span class="variable">isHovered</span>, <span class="function">setIsHovered</span>] = <span class="function">useState</span>&lt;<span class="type">boolean</span>&gt;(<span class="constant">false</span>);
+  <span class="keyword">const</span> [<span class="variable">clickCount</span>, <span class="function">setClickCount</span>] = <span class="function">useState</span>(<span class="number">0</span>);
+
+  <span class="function">useEffect</span>(() =&gt; {
+    <span class="control">if</span> (<span class="variable">clickCount</span> &gt; <span class="number">10</span>) {
+      <span class="variable">console</span>.<span class="function">warn</span>(<span class="string">'Too many clicks!'</span>);
+    }
+  }, [<span class="variable">clickCount</span>]);
+
+  <span class="keyword">const</span> <span class="function">handleClick</span> = <span class="function">useCallback</span>(() =&gt; {
+    <span class="control">if</span> (!<span class="variable">disabled</span>) {
+      <span class="function">setClickCount</span>(<span class="variable">prev</span> =&gt; <span class="variable">prev</span> + <span class="number">1</span>);
+      <span class="function">onClick</span>();
+    }
+  }, [<span class="variable">disabled</span>, <span class="variable">onClick</span>]);
+
+  <span class="comment">// Regular expression for validation</span>
+  <span class="keyword">const</span> <span class="variable">emailRegex</span> = <span class="regex">/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/</span>;
+</code></pre>
+					</div>
+
+					<!-- Sticky Scroll Widget (overlays editor) -->
+					<div class="sticky-scroll">
+						<div class="sticky-line"><span class="keyword">export</span> <span class="keyword">const</span> <span class="function">Button</span>: <span class="type">FC</span>&lt;<span class="type">ButtonProps</span>&gt; = ({</div>
+					</div>
+
+					<!-- Minimap -->
+					<div class="minimap">
+						<div class="minimap-content"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Auxiliary Bar -->
+			<div class="auxiliarybar">
+				<div class="aux-header"><i class="codicon codicon-comment-discussion"></i> CHAT</div>
+				<div class="aux-content">
+					<div class="chat-message assistant">
+						<div class="avatar"><i class="codicon codicon-hubot"></i></div>
+						<div class="message-content">How can I help you today?</div>
+					</div>
+					<div class="chat-message user">
+						<div class="message-content">Add blur effects to the UI</div>
+						<div class="avatar"><i class="codicon codicon-account"></i></div>
+					</div>
+				</div>
+				<div class="chat-input-container">
+					<input type="text" placeholder="Ask Copilot..." class="chat-input">
+					<button class="chat-submit"><i class="codicon codicon-send"></i></button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Panel -->
+		<div class="panel">
+			<div class="panel-tabs">
+				<div class="panel-tab active"><i class="codicon codicon-warning"></i> PROBLEMS</div>
+				<div class="panel-tab"><i class="codicon codicon-output"></i> OUTPUT</div>
+				<div class="panel-tab"><i class="codicon codicon-debug-console"></i> DEBUG CONSOLE</div>
+				<div class="panel-tab"><i class="codicon codicon-terminal"></i> TERMINAL</div>
+			</div>
+			<div class="panel-content">
+				<div class="problem-item warning"><i class="codicon codicon-warning"></i> 'variant' is declared but never read. [ts(6133)]</div>
+				<div class="problem-item error"><i class="codicon codicon-error"></i> Cannot find module './missing' [ts(2307)]</div>
+			</div>
+		</div>
+
+		<!-- Status Bar -->
+		<div class="statusbar">
+			<div class="statusbar-left">
+				<span class="status-item"><i class="codicon codicon-source-control"></i> main</span>
+				<span class="status-item"><i class="codicon codicon-sync"></i> 0 <i class="codicon codicon-arrow-down"></i> 0</span>
+				<span class="status-item error"><i class="codicon codicon-error"></i> 1</span>
+				<span class="status-item warning"><i class="codicon codicon-warning"></i> 1</span>
+			</div>
+			<div class="statusbar-right">
+				<span class="status-item">Ln 15, Col 24</span>
+				<span class="status-item">Spaces: 2</span>
+				<span class="status-item">UTF-8</span>
+				<span class="status-item">TypeScript</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Overlays for testing blur effects -->
+
+	<!-- Quick Input (Command Palette) -->
+	<div class="overlay-widget quick-input draggable" id="quick-input">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="quick-input-header">
+			<input type="text" placeholder=">" class="quick-input-field">
+		</div>
+		<div class="quick-input-list">
+			<div class="quick-input-item active">
+				<i class="codicon codicon-settings-gear"></i>
+				<span class="label">Preferences: Open Settings</span>
+			</div>
+			<div class="quick-input-item">
+				<i class="codicon codicon-folder-opened"></i>
+				<span class="label">File: Open File...</span>
+			</div>
+			<div class="quick-input-item">
+				<i class="codicon codicon-search"></i>
+				<span class="label">Go to File...</span>
+			</div>
+			<div class="quick-input-item">
+				<i class="codicon codicon-symbol-color"></i>
+				<span class="label">Preferences: Color Theme</span>
+			</div>
+		</div>
+	</div>
+
+	<!-- Context Menu -->
+	<div class="overlay-widget context-menu draggable" id="context-menu">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="context-menu-content">
+			<div class="menu-item"><i class="codicon codicon-clippy"></i> Cut</div>
+			<div class="menu-item"><i class="codicon codicon-copy"></i> Copy</div>
+			<div class="menu-item"><i class="codicon codicon-file"></i> Paste</div>
+			<div class="menu-separator"></div>
+			<div class="menu-item"><i class="codicon codicon-go-to-file"></i> Go to Definition</div>
+			<div class="menu-item"><i class="codicon codicon-symbol-class"></i> Go to Type Definition</div>
+			<div class="menu-item"><i class="codicon codicon-references"></i> Find All References</div>
+			<div class="menu-separator"></div>
+			<div class="menu-item submenu"><i class="codicon codicon-lightbulb"></i> Refactor... <i class="codicon codicon-chevron-right"></i></div>
+		</div>
+	</div>
+
+	<!-- Suggest Widget (Autocomplete) -->
+	<div class="overlay-widget suggest-widget draggable" id="suggest-widget">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="suggest-item active">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-method"></i></span>
+			<span class="suggest-label">useState</span>
+			<span class="suggest-detail">React Hook</span>
+		</div>
+		<div class="suggest-item">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-method"></i></span>
+			<span class="suggest-label">useEffect</span>
+			<span class="suggest-detail">React Hook</span>
+		</div>
+		<div class="suggest-item">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-method"></i></span>
+			<span class="suggest-label">useCallback</span>
+			<span class="suggest-detail">React Hook</span>
+		</div>
+		<div class="suggest-item">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-variable"></i></span>
+			<span class="suggest-label">userName</span>
+			<span class="suggest-detail">string</span>
+		</div>
+		<div class="suggest-item">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-constant"></i></span>
+			<span class="suggest-label">MAX_COUNT</span>
+			<span class="suggest-detail">number</span>
+		</div>
+		<div class="suggest-item">
+			<span class="suggest-icon"><i class="codicon codicon-symbol-interface"></i></span>
+			<span class="suggest-label">ButtonProps</span>
+			<span class="suggest-detail">interface</span>
+		</div>
+	</div>
+
+	<!-- Hover Widget -->
+	<div class="overlay-widget hover-widget draggable" id="hover-widget">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="hover-content">
+			<code><span class="keyword">const</span> <span class="function">useState</span>&lt;<span class="type">S</span>&gt;(<span class="variable">initialState</span>: <span class="type">S</span> | (() =&gt; <span class="type">S</span>)): [<span class="type">S</span>, <span class="type">Dispatch</span>&lt;<span class="type">SetStateAction</span>&lt;<span class="type">S</span>&gt;&gt;]</code>
+			<p class="hover-docs">Returns a stateful value, and a function to update it.</p>
+		</div>
+	</div>
+
+	<!-- Notification Toast -->
+	<div class="overlay-widget notification draggable" id="notification">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="notification-body">
+			<div class="notification-icon info"><i class="codicon codicon-info"></i></div>
+			<div class="notification-content">
+				<div class="notification-title">Extension Installed</div>
+				<div class="notification-message">Theme 2026 has been successfully installed. Reload to apply?</div>
+			</div>
+			<div class="notification-actions">
+				<button class="notification-btn primary">Reload</button>
+				<button class="notification-btn">Later</button>
+			</div>
+			<button class="notification-close"><i class="codicon codicon-close"></i></button>
+		</div>
+	</div>
+
+	<!-- Dialog -->
+	<div class="overlay-widget dialog draggable" id="dialog">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="dialog-content">
+			<div class="dialog-icon"><i class="codicon codicon-warning"></i></div>
+			<div class="dialog-message">
+				<h3>Save Changes?</h3>
+				<p>Do you want to save the changes you made to styles.css?</p>
+			</div>
+		</div>
+		<div class="dialog-buttons">
+			<button class="dialog-btn primary">Save</button>
+			<button class="dialog-btn">Don't Save</button>
+			<button class="dialog-btn">Cancel</button>
+		</div>
+	</div>
+
+	<!-- Debug Toolbar -->
+	<div class="overlay-widget debug-toolbar draggable" id="debug-toolbar">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="debug-toolbar-buttons">
+			<button class="debug-btn"><i class="codicon codicon-debug-continue"></i></button>
+			<button class="debug-btn"><i class="codicon codicon-debug-pause"></i></button>
+			<button class="debug-btn"><i class="codicon codicon-debug-stop"></i></button>
+			<button class="debug-btn"><i class="codicon codicon-debug-restart"></i></button>
+			<span class="debug-separator"></span>
+			<button class="debug-btn"><i class="codicon codicon-debug-step-over"></i></button>
+			<button class="debug-btn"><i class="codicon codicon-debug-step-into"></i></button>
+			<button class="debug-btn"><i class="codicon codicon-debug-step-out"></i></button>
+		</div>
+	</div>
+
+	<!-- Find Widget -->
+	<div class="overlay-widget find-widget draggable" id="find-widget">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="find-widget-content">
+			<div class="find-input-row">
+				<input type="text" placeholder="Find" class="find-input" value="useState">
+				<span class="find-count">1 of 3</span>
+				<button class="find-btn"><i class="codicon codicon-arrow-up"></i></button>
+				<button class="find-btn"><i class="codicon codicon-arrow-down"></i></button>
+				<button class="find-btn"><i class="codicon codicon-close"></i></button>
+			</div>
+			<div class="find-input-row">
+				<input type="text" placeholder="Replace" class="find-input">
+				<button class="find-btn"><i class="codicon codicon-replace"></i></button>
+				<button class="find-btn"><i class="codicon codicon-replace-all"></i></button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Parameter Hints -->
+	<div class="overlay-widget parameter-hints draggable" id="parameter-hints">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="parameter-hints-content">
+			<div class="param-signature">
+				<span class="function">useState</span>(<span class="param active">initialState</span>): [<span class="type">S</span>, <span class="type">Dispatch</span>]
+			</div>
+			<div class="param-docs">
+				<strong>initialState</strong>: The initial state value or a function that returns it.
+			</div>
+		</div>
+	</div>
+
+	<!-- Inline Chat -->
+	<div class="overlay-widget inline-chat draggable" id="inline-chat">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="inline-chat-header">
+			<span class="inline-chat-icon"><i class="codicon codicon-sparkle"></i></span>
+			<input type="text" placeholder="Ask Copilot to do something..." class="inline-chat-input">
+		</div>
+		<div class="inline-chat-actions">
+			<button class="inline-chat-btn"><i class="codicon codicon-check"></i> Accept</button>
+			<button class="inline-chat-btn"><i class="codicon codicon-discard"></i> Discard</button>
+		</div>
+	</div>
+
+	<!-- Breadcrumb Picker -->
+	<div class="overlay-widget breadcrumb-picker draggable" id="breadcrumb-picker">
+		<div class="drag-handle"><i class="codicon codicon-gripper"></i></div>
+		<div class="breadcrumb-picker-content">
+			<div class="picker-item"><i class="codicon codicon-symbol-class"></i> Button</div>
+			<div class="picker-item"><i class="codicon codicon-symbol-interface"></i> ButtonProps</div>
+			<div class="picker-item"><i class="codicon codicon-symbol-constant"></i> BUTTON_SIZES</div>
+			<div class="picker-item"><i class="codicon codicon-symbol-method"></i> handleClick</div>
+			<div class="picker-item"><i class="codicon codicon-symbol-variable"></i> isHovered</div>
+		</div>
+	</div>
+
+	<!-- Global Controls -->
+	<div class="global-controls">
+		<button id="reset-position"><i class="codicon codicon-debug-restart"></i> Reset Positions</button>
+		<label class="blur-toggle">
+			<input type="checkbox" id="disable-blur" />
+			Disable Blur
+		</label>
+		<div class="help-text">Drag overlays by their handle to test blur over different colors</div>
+	</div>
+
+	<script src="script.js"></script>
+</body>
+</html>
