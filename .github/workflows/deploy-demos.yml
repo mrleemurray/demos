@@ -8,6 +8,7 @@ on:
       - 'agent-sessions/**'
       - 'chat-input-prototype/**'
       - 'gutter-tab/**'
+      - 'theme-2026-blur-test/**'
       - 'index.html'
       - 'favicon.svg'
       - '.github/workflows/deploy-demos.yml'
@@ -64,6 +65,7 @@ jobs:
           cp -r agent-sessions/dist deploy/agent-sessions
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
+          cp -r theme-2026-blur-test deploy/theme-2026-blur-test
           cp index.html deploy/index.html
           cp favicon.svg deploy/favicon.svg
       
