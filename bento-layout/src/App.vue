@@ -1484,6 +1484,8 @@ function onMouseMove(e) {
 }
 
 function onMouseUp() {
+  // Cancel pending drag delay (prevents drag starting after a quick click-release)
+  clearTimeout(dragDelayTimer)
   // ── Drop handling ──
   if (dragging.value) {
     if (dragging.value.started) {
