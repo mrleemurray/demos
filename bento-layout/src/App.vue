@@ -1141,7 +1141,22 @@ function openChatInNewWorkspace() {
 // ─── Add new chat ─────────────────────────────────────────────────
 function addChat() {
   const ws = activeWorkspace.value
-  const sessionGroup = ws.group
+  // Pick the next unused session color across all workspaces in this repo
+  const usedGroups = new Set()
+  for (const w of workspaces.value) {
+    usedGroups.add(w.group)
+    for (const p of w.panels) {
+      usedGroups.add(p.group)
+    }
+  }
+  let sessionGroup = null
+  for (const g of groups) {
+    if (!usedGroups.has(g.id)) { sessionGroup = g.id; break }
+  }
+  if (!sessionGroup) {
+    // All colors used — cycle through
+    sessionGroup = groups[usedGroups.size % groups.length].id
+  }
   // Place new chat on the right, stacking below existing chats
   const chatCol = 9
   const chatWidth = 4
@@ -1158,6 +1173,11 @@ function addChat() {
   }
   const p = makeChatPanel(chatCol, newRow, chatWidth, 5)
   p.group = sessionGroup
+  // Register a session label for the new group
+  const labels = activeRepo.value.sessionLabels
+  if (!labels[sessionGroup]) {
+    labels[sessionGroup] = 'New Session'
+  }
   panels.value.push(p)
   selectedPanel.value = p.id
 }
