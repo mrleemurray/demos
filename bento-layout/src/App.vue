@@ -50,6 +50,7 @@
           >
             <span class="chip-dot" :style="{ background: g.accent }"></span>
             {{ sessionLabel(g.id) }}
+            <i v-if="groupHasAttention(g.id)" class="codicon codicon-warning chip-attention-icon"></i>
             <span class="chip-count">{{ allPanelsInGroup(g.id) }}</span>
           </button>
         </div>
@@ -96,6 +97,7 @@
           'is-spawn': spawningPanels.has(panel.id),
           'is-group-dimmed': selectedGroup && panel.group !== selectedGroup,
           'is-group-highlighted': selectedGroup && panel.group === selectedGroup,
+          'is-attention': panel.attention,
         }"
         :style="cellStyle(panel)"
         @click="selectedPanel = panel.id"
@@ -149,6 +151,7 @@
         >
           <i :class="'codicon codicon-' + panel.icon"></i>
           <span class="cell-title">{{ panel.title }}</span>
+          <i v-if="panel.attention" class="codicon codicon-warning cell-attention-icon"></i>
         </div>
 
         <!-- Action buttons (top-right, on hover) -->
@@ -341,6 +344,7 @@ function makeCustomPanel(col, row, colSpan, rowSpan, groupId, opts) {
     lines: opts.lines || [],
     isChat: false,
     messages: [],
+    attention: opts.attention || false,
   })
 }
 
@@ -704,6 +708,28 @@ function createDemoWorkspaces() {
         ],
       }),
       apiChat,
+      makeCustomPanel(5, 5, 2, 4, 'purple', {
+        icon: 'terminal', title: 'Terminal',
+        contentIcon: 'terminal-bash', contentLabel: 'db:migrate',
+        contentType: 'terminal',
+        attention: true,
+        lines: [
+          { text: '$ npx prisma migrate deploy', kind: 'cmd' },
+          { text: '' },
+          { text: 'Prisma Migrate — Deploy', kind: 'info' },
+          { text: '' },
+          { text: '  2 migrations found in prisma/migrations/', kind: 'default' },
+          { text: '' },
+          { text: '  ✓  20250226_init         Applied', kind: 'success' },
+          { text: '  ⚠  20250227_add_roles    Pending', kind: 'warning' },
+          { text: '' },
+          { text: '  1 pending migration needs to be applied.', kind: 'warning' },
+          { text: '' },
+          { text: '  Run `npx prisma migrate deploy` to apply.', kind: 'info' },
+          { text: '' },
+          { text: '  ⏎  Press ENTER to confirm, or Ctrl+C to abort.', kind: 'warning' },
+        ],
+      }),
       // ── Documentation session (orange) — bottom half ──
       makeCustomPanel(1, 5, 4, 4, 'orange', {
         icon: 'book', title: 'getting-started.md',
@@ -736,7 +762,7 @@ function createDemoWorkspaces() {
           { text: '```', kind: 'comment' },
         ],
       }),
-      makeCustomPanel(5, 5, 4, 4, 'orange', {
+      makeCustomPanel(7, 5, 2, 4, 'orange', {
         icon: 'globe', title: 'Swagger UI',
         contentIcon: 'globe', contentLabel: 'API Explorer',
         contentType: 'preview',
@@ -966,6 +992,13 @@ function allPanelsInGroup(groupId) {
     count += ws.panels.filter(p => p.group === groupId).length
   }
   return count
+}
+
+function groupHasAttention(groupId) {
+  for (const ws of workspaces.value) {
+    if (ws.panels.some(p => p.group === groupId && p.attention)) return true
+  }
+  return false
 }
 
 // Find workspace that owns a session group (check ws.group and panel groups)
@@ -2347,6 +2380,15 @@ async function runChatSpawn(chatPanel, text) {
   min-width: 16px;
   text-align: center;
 }
+.chip-attention-icon {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-size: 14px;
+  animation: attention-pulse-icon 2s ease-in-out infinite;
+}
+@keyframes attention-pulse-icon {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
 
 /* ─── Icon buttons ───────────────────────────────────────────── */
 .icon-btn {
@@ -2444,6 +2486,21 @@ async function runChatSpawn(chatPanel, text) {
 }
 .bento-cell.is-group-highlighted {
   border-color: var(--group-accent);
+}
+
+/* ─── Attention state: pulsing border + warning badge ────────── */
+@keyframes attention-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 70%, transparent); }
+  50%      { border-color: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 25%, transparent); }
+}
+.bento-cell.is-attention {
+  animation: attention-pulse 2s ease-in-out infinite;
+}
+.cell-attention-icon {
+  color: inherit;
+  font-size: 13px;
+  margin-left: 4px;
+  animation: attention-pulse-icon 2s ease-in-out infinite;
 }
 
 /* ═══════════════════════════════════════════════════════════════
