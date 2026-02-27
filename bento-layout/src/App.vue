@@ -2,8 +2,35 @@
   <div class="bento-app">
     <header class="titlebar">
       <div class="titlebar-left">
-        <i class="codicon codicon-layout"></i>
-        <span class="title">Bento Box Layout</span>
+        <button class="repo-selector" @click.stop="showRepoDrawer = !showRepoDrawer">
+          <i :class="'codicon codicon-' + activeRepo.icon"></i>
+          <span class="repo-name">{{ activeRepo.name }}</span>
+          <i class="codicon codicon-chevron-down repo-chevron" :class="{ open: showRepoDrawer }"></i>
+        </button>
+        <!-- Repo drawer -->
+        <div v-if="showRepoDrawer" class="repo-drawer">
+          <div class="repo-drawer-header">Repositories</div>
+          <button
+            v-for="repo in repos"
+            :key="repo.id"
+            class="repo-drawer-item"
+            :class="{ active: repo.id === activeRepoId }"
+            @click.stop="switchRepo(repo.id)"
+          >
+            <i :class="'codicon codicon-' + repo.icon"></i>
+            <span>{{ repo.name }}</span>
+            <span v-if="repo.id === activeRepoId" class="repo-active-dot"></span>
+          </button>
+          <div class="repo-drawer-divider"></div>
+          <button class="repo-drawer-item" @click.stop="showRepoDrawer = false">
+            <i class="codicon codicon-folder-opened"></i>
+            <span>Add Project...</span>
+          </button>
+          <button class="repo-drawer-item" @click.stop="showRepoDrawer = false">
+            <i class="codicon codicon-plus"></i>
+            <span>New Project...</span>
+          </button>
+        </div>
       </div>
       <div class="titlebar-center">
         <div class="group-legend">
@@ -22,30 +49,27 @@
             @click="onTagClick(g.id)"
           >
             <span class="chip-dot" :style="{ background: g.accent }"></span>
-            {{ g.label }}
+            {{ sessionLabel(g.id) }}
             <span class="chip-count">{{ allPanelsInGroup(g.id) }}</span>
           </button>
         </div>
       </div>
       <div class="titlebar-right">
         <div class="plus-menu-anchor">
-          <button class="icon-btn" title="New Chat" @click.stop="showPlusMenu = !showPlusMenu">
-            <i class="codicon codicon-add"></i>
+          <button class="icon-btn" title="New Session" @click.stop="showPlusMenu = !showPlusMenu">
+            <i class="codicon codicon-new-session"></i>
           </button>
           <div v-if="showPlusMenu" class="plus-menu" @click.stop>
             <button class="plus-menu-item" @click="addChat(); showPlusMenu = false">
               <i class="codicon codicon-comment-discussion"></i>
-              <span>New Chat Here</span>
+              <span>New Session Here</span>
             </button>
             <button class="plus-menu-item" @click="openChatInNewWorkspace(); showPlusMenu = false">
               <i class="codicon codicon-empty-window"></i>
-              <span>New Chat in New Workspace</span>
+              <span>New Session in New Workspace</span>
             </button>
           </div>
         </div>
-        <button class="icon-btn" title="Reset Layout" @click="resetLayout()">
-          <i class="codicon codicon-refresh"></i>
-        </button>
       </div>
     </header>
 
@@ -62,6 +86,7 @@
         class="bento-cell"
         :class="{
           'is-selected': selectedPanel === panel.id,
+          'is-unfocused': selectedPanel !== null && selectedPanel !== panel.id,
           'is-dragging': dragging && dragging.panel.id === panel.id,
           'is-drop-target': dropTarget && dropTarget.id === panel.id && dragging && dragging.panel.id !== panel.id,
           'is-mitosis-h': splittingPanel === panel.id && splitDirection === 'horizontal',
@@ -73,7 +98,7 @@
           'is-group-highlighted': selectedGroup && panel.group === selectedGroup,
         }"
         :style="cellStyle(panel)"
-        @click.self="selectedPanel = panel.id"
+        @click="selectedPanel = panel.id"
         @animationend="onAnimEnd($event, panel.id)"
       >
         <!-- Cytoplasm glow during mitosis -->
@@ -84,16 +109,36 @@
         ></div>
         <!-- Resize handles -->
         <div
-          class="resize-handle resize-right"
-          @mousedown.stop.prevent="startResize($event, panel, 'right')"
+          class="resize-handle resize-top"
+          @mousedown.stop.prevent="startResize($event, panel, 'top')"
         ></div>
         <div
           class="resize-handle resize-bottom"
           @mousedown.stop.prevent="startResize($event, panel, 'bottom')"
         ></div>
         <div
-          class="resize-handle resize-corner"
-          @mousedown.stop.prevent="startResize($event, panel, 'corner')"
+          class="resize-handle resize-left"
+          @mousedown.stop.prevent="startResize($event, panel, 'left')"
+        ></div>
+        <div
+          class="resize-handle resize-right"
+          @mousedown.stop.prevent="startResize($event, panel, 'right')"
+        ></div>
+        <div
+          class="resize-handle resize-corner resize-corner-tl"
+          @mousedown.stop.prevent="startResize($event, panel, 'top-left')"
+        ></div>
+        <div
+          class="resize-handle resize-corner resize-corner-tr"
+          @mousedown.stop.prevent="startResize($event, panel, 'top-right')"
+        ></div>
+        <div
+          class="resize-handle resize-corner resize-corner-bl"
+          @mousedown.stop.prevent="startResize($event, panel, 'bottom-left')"
+        ></div>
+        <div
+          class="resize-handle resize-corner resize-corner-br"
+          @mousedown.stop.prevent="startResize($event, panel, 'bottom-right')"
         ></div>
 
         <!-- Tab label (top-left corner) -->
@@ -108,14 +153,6 @@
 
         <!-- Action buttons (top-right, on hover) -->
         <div class="cell-actions">
-          <button
-            class="icon-btn-sm"
-            :style="{ color: groupAccent(panel.group) }"
-            title="Change Group"
-            @click.stop="cycleGroup(panel)"
-          >
-            <i class="codicon codicon-symbol-color"></i>
-          </button>
           <button
             class="icon-btn-sm"
             title="Split Horizontal"
@@ -211,7 +248,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick } from 'vue'
+import { ref, reactive, computed, nextTick, watch } from 'vue'
 
 // ─── Group definitions (context colors, not function) ────────────
 const groups = [
@@ -240,12 +277,19 @@ const contentLabels = [
   '42 results', 'Installed (12)', 'All Tests Passed', 'Incoming Calls', 'Cell 1',
 ]
 
+// ─── Session labels (per-repo) ───────────────────────────────────
+const sessionLabels = computed(() => activeRepo.value.sessionLabels)
+function sessionLabel(groupId) {
+  return sessionLabels.value[groupId] || 'New Session'
+}
+
 // ─── Grid configuration ──────────────────────────────────────────
 const gridCols = ref(12)
 const GAP = 6
 
 let nextId = 1
 let nextWorkspaceId = 1
+let nextRepoId = 1
 
 function makePanel(col, row, colSpan, rowSpan, groupId, idx) {
   const i = idx % panelTitles.length
@@ -328,6 +372,7 @@ function createWorkspace(sessionGroup) {
 }
 
 function createDemoWorkspaces() {
+  const demoSessionLabels = reactive({})
   // ─── Frontend Session (blue / Session 1) ───────────────────────
   const feChat = makeCustomChatPanel(9, 1, 4, 8, 'blue', [
     { role: 'assistant', text: 'What would you like to build?' },
@@ -585,11 +630,284 @@ function createDemoWorkspaces() {
     chatColorIndex: 0,
   })
 
-  return [feWorkspace, beWorkspace]
+  // ─── API & Docs Workspace (Session 3 + Session 4) ─────────────
+  // Two sessions share this workspace: purple = API, orange = Docs
+  const apiChat = makeCustomChatPanel(9, 1, 4, 4, 'purple', [
+    { role: 'assistant', text: 'What would you like to build?' },
+    { role: 'user', text: 'Design a REST API with OpenAPI spec and Swagger' },
+    { role: 'assistant', text: 'I\'ll set up OpenAPI 3.1 with Swagger UI and route handlers. Scaffolding now…' },
+  ])
+  const docsChat = makeCustomChatPanel(9, 5, 4, 4, 'orange', [
+    { role: 'assistant', text: 'What would you like to document?' },
+    { role: 'user', text: 'Write getting-started docs with auth examples and SDK usage' },
+    { role: 'assistant', text: 'I\'ll create a getting-started guide with installation, authentication, and code examples…' },
+  ])
+  const apiDocsWorkspace = reactive({
+    id: nextWorkspaceId++,
+    group: 'purple',
+    panels: [
+      // ── API session (purple) — top half ──
+      makeCustomPanel(1, 1, 4, 4, 'purple', {
+        icon: 'file-code', title: 'openapi.yaml',
+        contentIcon: 'list-flat', contentLabel: 'OpenAPI 3.1 Spec',
+        lines: [
+          { text: 'openapi: 3.1.0', kind: 'keyword' },
+          { text: 'info:', kind: 'fn' },
+          { text: '  title: Acme API', kind: 'string' },
+          { text: '  version: 2.0.0', kind: 'string' },
+          { text: '  description: Production REST API', kind: 'string' },
+          { text: '' },
+          { text: 'paths:', kind: 'fn' },
+          { text: '  /api/users:', kind: 'tag' },
+          { text: '    get:', kind: 'keyword' },
+          { text: '      summary: List users', kind: 'string' },
+          { text: '      parameters:', kind: 'fn' },
+          { text: '        - name: page', kind: 'default' },
+          { text: '          in: query', kind: 'default' },
+          { text: '          schema: { type: integer }', kind: 'default' },
+          { text: '      responses:', kind: 'fn' },
+          { text: '        200:', kind: 'success' },
+          { text: '          description: OK', kind: 'string' },
+          { text: '    post:', kind: 'keyword' },
+          { text: '      summary: Create user', kind: 'string' },
+          { text: '      requestBody:', kind: 'fn' },
+          { text: '        content:', kind: 'default' },
+          { text: '          application/json:', kind: 'default' },
+          { text: '            schema: { $ref: \'#/components/schemas/User\' }', kind: 'tag' },
+        ],
+      }),
+      makeCustomPanel(5, 1, 4, 4, 'purple', {
+        icon: 'file-code', title: 'routes.controller.ts',
+        contentIcon: 'server', contentLabel: 'Route Handlers',
+        lines: [
+          { text: 'import { Controller, Get, Post, Body } from \'@nestjs/common\';', kind: 'keyword' },
+          { text: 'import { ApiTags, ApiOperation } from \'@nestjs/swagger\';', kind: 'keyword' },
+          { text: 'import { UsersService } from \'./users.service\';', kind: 'keyword' },
+          { text: '' },
+          { text: '@ApiTags(\'users\')', kind: 'tag' },
+          { text: '@Controller(\'api/users\')', kind: 'tag' },
+          { text: 'export class UsersController {', kind: 'fn' },
+          { text: '  constructor(private users: UsersService) {}', kind: 'default' },
+          { text: '' },
+          { text: '  @Get()', kind: 'tag' },
+          { text: '  @ApiOperation({ summary: \'List all users\' })', kind: 'tag' },
+          { text: '  findAll() {', kind: 'fn' },
+          { text: '    return this.users.findAll();', kind: 'default' },
+          { text: '  }', kind: 'fn' },
+          { text: '' },
+          { text: '  @Post()', kind: 'tag' },
+          { text: '  @ApiOperation({ summary: \'Create a user\' })', kind: 'tag' },
+          { text: '  create(@Body() dto: CreateUserDto) {', kind: 'fn' },
+          { text: '    return this.users.create(dto);', kind: 'default' },
+          { text: '  }', kind: 'fn' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      apiChat,
+      // ── Documentation session (orange) — bottom half ──
+      makeCustomPanel(1, 5, 4, 4, 'orange', {
+        icon: 'book', title: 'getting-started.md',
+        contentIcon: 'book', contentLabel: 'Documentation',
+        lines: [
+          { text: '# Getting Started', kind: 'tag' },
+          { text: '', kind: 'default' },
+          { text: '## Installation', kind: 'tag' },
+          { text: '', kind: 'default' },
+          { text: '```bash', kind: 'comment' },
+          { text: 'npm install @acme/sdk', kind: 'cmd' },
+          { text: '```', kind: 'comment' },
+          { text: '', kind: 'default' },
+          { text: '## Authentication', kind: 'tag' },
+          { text: '', kind: 'default' },
+          { text: 'All API requests require a Bearer token:', kind: 'default' },
+          { text: '', kind: 'default' },
+          { text: '```typescript', kind: 'comment' },
+          { text: 'const client = new AcmeClient({', kind: 'fn' },
+          { text: '  apiKey: process.env.ACME_API_KEY,', kind: 'string' },
+          { text: '  baseUrl: \'https://api.acme.io/v2\',', kind: 'string' },
+          { text: '});', kind: 'fn' },
+          { text: '```', kind: 'comment' },
+          { text: '', kind: 'default' },
+          { text: '## Quick Example', kind: 'tag' },
+          { text: '', kind: 'default' },
+          { text: '```typescript', kind: 'comment' },
+          { text: 'const users = await client.users.list({ page: 1 });', kind: 'default' },
+          { text: 'console.log(users.data);', kind: 'string' },
+          { text: '```', kind: 'comment' },
+        ],
+      }),
+      makeCustomPanel(5, 5, 4, 4, 'orange', {
+        icon: 'globe', title: 'Swagger UI',
+        contentIcon: 'globe', contentLabel: 'API Explorer',
+        contentType: 'preview',
+        lines: [
+          { text: '┌───────────────────────────────┐', kind: 'dim' },
+          { text: '│  Acme API v2.0.0   [Swagger]  │', kind: 'info' },
+          { text: '├───────────────────────────────┤', kind: 'dim' },
+          { text: '│                               │', kind: 'dim' },
+          { text: '│  GET  /api/users       ✓ 200  │', kind: 'success' },
+          { text: '│  POST /api/users       ✓ 201  │', kind: 'success' },
+          { text: '│  GET  /api/users/:id   ✓ 200  │', kind: 'success' },
+          { text: '│  PUT  /api/users/:id   ✓ 200  │', kind: 'success' },
+          { text: '│  DEL  /api/users/:id   ✓ 204  │', kind: 'success' },
+          { text: '│                               │', kind: 'dim' },
+          { text: '│  Schemas: User, CreateUserDto  │', kind: 'info' },
+          { text: '└───────────────────────────────┘', kind: 'dim' },
+        ],
+      }),
+      docsChat,
+    ],
+    gridRows: 8,
+    chatColorIndex: 0,
+  })
+
+  // ─── Session labels ──────────────────────────────────────────
+  demoSessionLabels['blue'] = 'Frontend'
+  demoSessionLabels['green'] = 'Backend'
+  demoSessionLabels['purple'] = 'API'
+  demoSessionLabels['orange'] = 'Documentation'
+
+  return { workspaces: [feWorkspace, beWorkspace, apiDocsWorkspace], sessionLabels: demoSessionLabels }
 }
 
-const workspaces = ref(createDemoWorkspaces())
-const activeWorkspaceId = ref(workspaces.value[0].id)
+// ─── Repo model ──────────────────────────────────────────────────
+function createRepo(name, icon) {
+  const demoData = createDemoWorkspaces()
+  return reactive({
+    id: nextRepoId++,
+    name,
+    icon: icon || 'repo',
+    workspaces: demoData.workspaces,
+    sessionLabels: demoData.sessionLabels,
+    activeWorkspaceId: demoData.workspaces[0].id,
+  })
+}
+
+// ── Lightweight repo factory (single session with a chat) ────────
+function createSimpleRepo(name, icon, sessionName, sessionGroup, panelDefs) {
+  const labels = reactive({})
+  labels[sessionGroup] = sessionName
+  const chat = makeChatPanel(9, 1, 4, 8)
+  chat.group = sessionGroup
+  const panels = panelDefs.map(d => {
+    const p = makeCustomPanel(d.col, d.row, d.colSpan, d.rowSpan, sessionGroup, {
+      icon: d.icon, title: d.title,
+      contentIcon: d.contentIcon || 'code', contentLabel: d.contentLabel || d.title,
+      lines: d.lines || [],
+    })
+    return p
+  })
+  panels.push(chat)
+  const ws = reactive({
+    id: nextWorkspaceId++,
+    group: sessionGroup,
+    panels,
+    gridRows: 8,
+    chatColorIndex: 0,
+  })
+  return reactive({
+    id: nextRepoId++,
+    name,
+    icon: icon || 'repo',
+    workspaces: [ws],
+    sessionLabels: labels,
+    activeWorkspaceId: ws.id,
+  })
+}
+
+const repos = ref([
+  createRepo('acme-webapp', 'repo'),
+  createSimpleRepo('payments-api', 'repo-forked', 'Compiler', 'green', [
+    { col: 1, row: 1, colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'checker.ts',
+      lines: [
+        { text: 'import { DiagnosticMessage } from \'./types\';', kind: 'keyword' },
+        { text: 'import { createScanner } from \'./scanner\';', kind: 'keyword' },
+        { text: '' },
+        { text: 'export function createChecker(program: Program) {', kind: 'fn' },
+        { text: '  const diagnostics: Diagnostic[] = [];', kind: 'default' },
+        { text: '  return { checkSourceFile, getDiagnostics };', kind: 'default' },
+        { text: '}', kind: 'default' },
+      ] },
+    { col: 5, row: 1, colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'parser.ts',
+      lines: [
+        { text: 'import { SyntaxKind } from \'./types\';', kind: 'keyword' },
+        { text: '' },
+        { text: 'export function parseSourceFile(text: string) {', kind: 'fn' },
+        { text: '  const scanner = createScanner(text);', kind: 'default' },
+        { text: '  return parseStatements(scanner);', kind: 'default' },
+        { text: '}', kind: 'default' },
+      ] },
+    { col: 1, row: 5, colSpan: 4, rowSpan: 4, icon: 'terminal', title: 'Build',
+      contentIcon: 'terminal-bash', contentLabel: 'tsc --watch',
+      lines: [
+        { text: '$ tsc --watch', kind: 'cmd' },
+        { text: '[12:01:03] Starting compilation...', kind: 'info' },
+        { text: '[12:01:08] Found 0 errors. Watching for changes.', kind: 'success' },
+      ] },
+    { col: 5, row: 5, colSpan: 4, rowSpan: 4, icon: 'beaker', title: 'tests.ts',
+      lines: [
+        { text: 'describe(\'Parser\', () => {', kind: 'fn' },
+        { text: '  it(\'parses variable declarations\', () => {', kind: 'string' },
+        { text: '    const result = parse(\'const x = 1;\');', kind: 'default' },
+        { text: '    expect(result.kind).toBe(SyntaxKind.Const);', kind: 'default' },
+        { text: '  });', kind: 'default' },
+        { text: '});', kind: 'default' },
+      ] },
+  ]),
+  createSimpleRepo('infra-deploy', 'repo-clone', 'Runtime', 'purple', [
+    { col: 1, row: 1, colSpan: 4, rowSpan: 5, icon: 'file-code', title: 'lib/net.js',
+      lines: [
+        { text: '\'use strict\';', kind: 'string' },
+        { text: 'const { TCP, constants } = internalBinding(\'tcp_wrap\');', kind: 'keyword' },
+        { text: '' },
+        { text: 'function createServer(options, connectionListener) {', kind: 'fn' },
+        { text: '  return new Server(options, connectionListener);', kind: 'default' },
+        { text: '}', kind: 'default' },
+        { text: '' },
+        { text: 'module.exports = { createServer, connect };', kind: 'keyword' },
+      ] },
+    { col: 5, row: 1, colSpan: 4, rowSpan: 5, icon: 'file-code', title: 'lib/http.js',
+      lines: [
+        { text: '\'use strict\';', kind: 'string' },
+        { text: 'const { IncomingMessage } = require(\'_http_incoming\');', kind: 'keyword' },
+        { text: '' },
+        { text: 'function createHTTPServer(opts, requestListener) {', kind: 'fn' },
+        { text: '  const server = new HTTPServer(opts);', kind: 'default' },
+        { text: '  if (requestListener) server.on(\'request\', requestListener);', kind: 'default' },
+        { text: '  return server;', kind: 'default' },
+        { text: '}', kind: 'default' },
+      ] },
+    { col: 1, row: 6, colSpan: 8, rowSpan: 3, icon: 'terminal', title: 'make',
+      contentIcon: 'terminal-bash', contentLabel: 'make -j4',
+      lines: [
+        { text: '$ make -j4', kind: 'cmd' },
+        { text: 'CC  src/node_main.cc', kind: 'default' },
+        { text: 'CC  src/node_platform.cc', kind: 'default' },
+        { text: 'LINK node', kind: 'success' },
+        { text: 'Build complete.', kind: 'success' },
+      ] },
+  ]),
+])
+const activeRepoId = ref(repos.value[0].id)
+const activeRepo = computed(() => repos.value.find(r => r.id === activeRepoId.value))
+const showRepoDrawer = ref(false)
+
+function switchRepo(repoId) {
+  activeRepoId.value = repoId
+  showRepoDrawer.value = false
+  selectedPanel.value = null
+  selectedGroup.value = null
+}
+
+// Bridge: current repo's workspaces
+const workspaces = computed({
+  get: () => activeRepo.value.workspaces,
+  set: (v) => { activeRepo.value.workspaces = v },
+})
+const activeWorkspaceId = computed({
+  get: () => activeRepo.value.activeWorkspaceId,
+  set: (v) => { activeRepo.value.activeWorkspaceId = v },
+})
 const activeWorkspace = computed(() => workspaces.value.find(w => w.id === activeWorkspaceId.value))
 
 // Bind current workspace state to refs used by the rest of the code
@@ -601,8 +919,15 @@ const gridRows = computed({
   get: () => activeWorkspace.value.gridRows,
   set: (v) => { activeWorkspace.value.gridRows = v },
 })
-const selectedPanel = ref(null)
+const selectedPanel = ref(panels.value.length ? panels.value[0].id : null)
 const selectedGroup = ref(null)
+
+// Auto-focus first panel when workspace or repo changes
+watch(panels, (newPanels) => {
+  if (newPanels.length && (!selectedPanel.value || !newPanels.some(p => p.id === selectedPanel.value))) {
+    selectedPanel.value = newPanels[0].id
+  }
+})
 const splittingPanel = ref(null)
 const splitDirection = ref(null)
 const spawnedPanel = ref(null)
@@ -643,9 +968,11 @@ function allPanelsInGroup(groupId) {
   return count
 }
 
-// Find workspace that owns a session group
+// Find workspace that owns a session group (check ws.group and panel groups)
 function workspaceForGroup(groupId) {
-  return workspaces.value.find(ws => ws.group === groupId)
+  return workspaces.value.find(ws =>
+    ws.group === groupId || ws.panels.some(p => p.group === groupId)
+  )
 }
 
 function onTagClick(groupId) {
@@ -659,6 +986,7 @@ function onTagClick(groupId) {
   if (ws && ws.id !== activeWorkspaceId.value) {
     activeWorkspaceId.value = ws.id
     selectedGroup.value = null
+    selectedPanel.value = null
   } else {
     selectedGroup.value = groupId
   }
@@ -684,7 +1012,7 @@ function cellStyle(panel) {
 }
 
 // ─── Close plus menu on outside click ─────────────────────────────
-function onDocClick() { showPlusMenu.value = false }
+function onDocClick() { showPlusMenu.value = false; showRepoDrawer.value = false }
 if (typeof document !== 'undefined') {
   document.addEventListener('click', onDocClick)
 }
@@ -909,7 +1237,7 @@ function startDrag(e, panel) {
 }
 
 // ─── Resize logic ────────────────────────────────────────────────
-const resizing = ref(null) // { panel, direction, startX, startY, startColSpan, startRowSpan }
+const resizing = ref(null) // { panel, direction, startX, startY, startCol, startRow, startColSpan, startRowSpan }
 
 function startResize(e, panel, direction) {
   resizing.value = {
@@ -917,12 +1245,18 @@ function startResize(e, panel, direction) {
     direction,
     startX: e.clientX,
     startY: e.clientY,
+    startCol: panel.col,
+    startRow: panel.row,
     startColSpan: panel.colSpan,
     startRowSpan: panel.rowSpan,
   }
-  document.body.style.cursor =
-    direction === 'right' ? 'col-resize' :
-    direction === 'bottom' ? 'row-resize' : 'nwse-resize'
+  const cursors = {
+    right: 'col-resize', left: 'col-resize',
+    bottom: 'row-resize', top: 'row-resize',
+    'bottom-right': 'nwse-resize', 'top-left': 'nwse-resize',
+    'top-right': 'nesw-resize', 'bottom-left': 'nesw-resize',
+  }
+  document.body.style.cursor = cursors[direction] || 'nwse-resize'
   document.body.style.userSelect = 'none'
 }
 
@@ -977,20 +1311,45 @@ function onMouseMove(e) {
   // ── Resize handling ──
   if (!resizing.value || !gridRef.value) return
 
-  const { panel, direction, startX, startY, startColSpan, startRowSpan } = resizing.value
+  const { panel, direction, startX, startY, startCol, startRow, startColSpan, startRowSpan } = resizing.value
   const gridRect = gridRef.value.getBoundingClientRect()
   const cellW = gridRect.width / gridCols.value
   const cellH = gridRect.height / gridRows.value
 
-  if (direction === 'right' || direction === 'corner') {
+  const resizeRight = direction === 'right' || direction === 'bottom-right' || direction === 'top-right'
+  const resizeLeft = direction === 'left' || direction === 'bottom-left' || direction === 'top-left'
+  const resizeBottom = direction === 'bottom' || direction === 'bottom-right' || direction === 'bottom-left'
+  const resizeTop = direction === 'top' || direction === 'top-left' || direction === 'top-right'
+
+  if (resizeRight) {
     const dx = e.clientX - startX
     const colDelta = Math.round(dx / cellW)
-    panel.colSpan = Math.max(1, Math.min(gridCols.value - panel.col + 1, startColSpan + colDelta))
+    panel.colSpan = Math.max(1, Math.min(gridCols.value - startCol + 1, startColSpan + colDelta))
   }
-  if (direction === 'bottom' || direction === 'corner') {
+  if (resizeLeft) {
+    const dx = e.clientX - startX
+    const colDelta = Math.round(dx / cellW)
+    const newCol = Math.max(1, startCol + colDelta)
+    const newSpan = startColSpan - (newCol - startCol)
+    if (newSpan >= 1) {
+      panel.col = newCol
+      panel.colSpan = newSpan
+    }
+  }
+  if (resizeBottom) {
     const dy = e.clientY - startY
     const rowDelta = Math.round(dy / cellH)
-    panel.rowSpan = Math.max(1, Math.min(gridRows.value - panel.row + 1, startRowSpan + rowDelta))
+    panel.rowSpan = Math.max(1, Math.min(gridRows.value - startRow + 1, startRowSpan + rowDelta))
+  }
+  if (resizeTop) {
+    const dy = e.clientY - startY
+    const rowDelta = Math.round(dy / cellH)
+    const newRow = Math.max(1, startRow + rowDelta)
+    const newSpan = startRowSpan - (newRow - startRow)
+    if (newSpan >= 1) {
+      panel.row = newRow
+      panel.rowSpan = newSpan
+    }
   }
 }
 
@@ -1039,7 +1398,14 @@ function onMouseUp() {
 function resetLayout() {
   nextId = 1
   nextWorkspaceId = 1
-  workspaces.value = createDemoWorkspaces()
+  const demoData = createDemoWorkspaces()
+  // Reset session labels on active repo
+  const labels = activeRepo.value.sessionLabels
+  for (const key of Object.keys(labels)) {
+    delete labels[key]
+  }
+  Object.assign(labels, demoData.sessionLabels)
+  workspaces.value = demoData.workspaces
   activeWorkspaceId.value = workspaces.value[0].id
   selectedPanel.value = null
   selectedGroup.value = null
@@ -1785,11 +2151,106 @@ async function runChatSpawn(chatPanel, text) {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  position: relative;
 }
-.titlebar-left .title {
+
+/* ─── Repo selector button ──────────────────────────────────── */
+.repo-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 15%, transparent);
+  border-radius: 6px;
+  padding: 3px 8px 3px 6px;
+  color: var(--vscode-foreground);
+  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.repo-selector:hover {
+  background: color-mix(in srgb, var(--vscode-foreground) 8%, transparent);
+  border-color: color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
+}
+.repo-selector .codicon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.repo-name {
+  white-space: nowrap;
+}
+.repo-chevron {
+  font-size: 10px !important;
+  opacity: 0.5 !important;
+  transition: transform 0.2s;
+}
+.repo-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ─── Repo drawer ───────────────────────────────────────────── */
+.repo-drawer {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  background: var(--vscode-editor-background);
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 15%, transparent);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: drawer-in 0.15s ease-out;
+}
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.repo-drawer-header {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  padding: 4px 8px 6px;
+}
+.repo-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--vscode-foreground);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.repo-drawer-item:hover {
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+}
+.repo-drawer-item.active {
+  background: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
+}
+.repo-drawer-item .codicon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+.repo-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bento-accent-blue, #60a5fa);
+  margin-left: auto;
+}
+.repo-drawer-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  margin: 4px 8px;
 }
 .titlebar-center {
   flex: 1;
@@ -1946,7 +2407,7 @@ async function runChatSpawn(chatPanel, text) {
 .bento-cell {
   position: relative;
   background: var(--vscode-editor-background);
-  border: 1px solid var(--group-accent);
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1960,21 +2421,29 @@ async function runChatSpawn(chatPanel, text) {
   min-height: 0;
 }
 .bento-cell:hover {
-  border-color: var(--group-accent);
+  border-color: color-mix(in srgb, var(--group-accent) 30%, transparent);
 }
 .bento-cell.is-selected {
-  border-color: var(--group-accent);
-  box-shadow:
-    0 0 0 1px var(--group-accent),
-    0 4px 16px rgba(0,0,0,0.3);
+  border-color: color-mix(in srgb, var(--vscode-foreground) 25%, transparent);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   z-index: 1;
+}
+/* Unfocused state: dim label when another cell is focused */
+.bento-cell.is-unfocused .cell-tab {
+  opacity: 0.4;
+}
+.bento-cell.is-unfocused:hover {
+  border-color: color-mix(in srgb, var(--group-accent) 30%, transparent);
+}
+.bento-cell.is-unfocused:hover .cell-tab {
+  opacity: 0.7;
 }
 .bento-cell.is-group-dimmed {
   opacity: 0.3;
   filter: grayscale(0.5);
 }
 .bento-cell.is-group-highlighted {
-  box-shadow: 0 0 12px color-mix(in srgb, var(--group-accent) 30%, transparent);
+  border-color: var(--group-accent);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2273,6 +2742,13 @@ async function runChatSpawn(chatPanel, text) {
   height: 100%;
   cursor: col-resize;
 }
+.resize-left {
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
 .resize-bottom {
   bottom: -4px;
   left: 0;
@@ -2280,12 +2756,36 @@ async function runChatSpawn(chatPanel, text) {
   width: 100%;
   cursor: row-resize;
 }
+.resize-top {
+  top: -4px;
+  left: 0;
+  height: 8px;
+  width: 100%;
+  cursor: row-resize;
+}
 .resize-corner {
-  bottom: -4px;
-  right: -4px;
   width: 14px;
   height: 14px;
+}
+.resize-corner-br {
+  bottom: -4px;
+  right: -4px;
   cursor: nwse-resize;
+}
+.resize-corner-tl {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+.resize-corner-tr {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+.resize-corner-bl {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
 }
 .resize-handle:hover::after {
   content: '';
@@ -2299,18 +2799,44 @@ async function runChatSpawn(chatPanel, text) {
   width: 2px;
   height: 60%;
 }
+.resize-left:hover::after {
+  top: 20%;
+  left: 3px;
+  width: 2px;
+  height: 60%;
+}
 .resize-bottom:hover::after {
   left: 20%;
   bottom: 3px;
   height: 2px;
   width: 60%;
 }
+.resize-top:hover::after {
+  left: 20%;
+  top: 3px;
+  height: 2px;
+  width: 60%;
+}
 .resize-corner:hover::after {
-  bottom: 2px;
-  right: 2px;
   width: 8px;
   height: 8px;
   border-radius: 2px;
+}
+.resize-corner-br:hover::after {
+  bottom: 2px;
+  right: 2px;
+}
+.resize-corner-tl:hover::after {
+  top: 2px;
+  left: 2px;
+}
+.resize-corner-tr:hover::after {
+  top: 2px;
+  right: 2px;
+}
+.resize-corner-bl:hover::after {
+  bottom: 2px;
+  left: 2px;
 }
 
 /* ─── Drag & drop ────────────────────────────────────────────── */
@@ -2444,8 +2970,8 @@ async function runChatSpawn(chatPanel, text) {
   height: 30px;
   border: none;
   border-radius: 6px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+  color: var(--vscode-foreground);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2454,6 +2980,6 @@ async function runChatSpawn(chatPanel, text) {
   transition: background 0.1s;
 }
 .chat-send:hover {
-  background: var(--vscode-button-hoverBackground);
+  background: color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
 }
 </style>
