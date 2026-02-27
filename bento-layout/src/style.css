@@ -1,0 +1,93 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* VS Code Dark Theme Colors */
+  --vscode-foreground: #cccccc;
+  --vscode-descriptionForeground: #8c8c8c;
+  --vscode-editor-background: #1e1e1e;
+  --vscode-sideBar-background: #252526;
+  --vscode-panel-background: #1e1e1e;
+  --vscode-panel-border: #2b2b2b;
+  --vscode-titleBar-background: #3c3c3c;
+  --vscode-activityBar-background: #333333;
+  --vscode-tab-activeBackground: #1e1e1e;
+  --vscode-tab-inactiveBackground: #2d2d2d;
+  --vscode-list-hoverBackground: #2a2d2e;
+  --vscode-list-activeSelectionBackground: #094771;
+  --vscode-input-background: #3c3c3c;
+  --vscode-input-foreground: #cccccc;
+  --vscode-input-border: #3c3c3c;
+  --vscode-focusBorder: #007fd4;
+  --vscode-button-background: #0e639c;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #1177bb;
+  --vscode-badge-background: #4d4d4d;
+  --vscode-badge-foreground: #ffffff;
+  --vscode-scrollbarSlider-background: rgba(121, 121, 121, 0.4);
+  --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.36);
+
+  /* Bento group colors */
+  --bento-group-blue: #264f78;
+  --bento-group-green: #2d4a3e;
+  --bento-group-purple: #3b2d5e;
+  --bento-group-orange: #5a3e28;
+  --bento-group-red: #5a2828;
+  --bento-group-teal: #1a4a4a;
+  --bento-group-default: #2d2d2d;
+
+  /* Bento group accent colors (brighter, for borders/badges) */
+  --bento-accent-blue: #4a9cd6;
+  --bento-accent-green: #4ec9b0;
+  --bento-accent-purple: #c586c0;
+  --bento-accent-orange: #ce9178;
+  --bento-accent-red: #f48771;
+  --bento-accent-teal: #36c2c2;
+  --bento-accent-default: #858585;
+
+  color-scheme: dark;
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+}
