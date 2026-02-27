@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'agent-sessions/**'
+      - 'bento-layout/**'
       - 'chat-input-prototype/**'
       - 'gutter-tab/**'
       - 'theme-2026-blur-test/**'
@@ -40,6 +41,15 @@ jobs:
         working-directory: ./agent-sessions
         run: npm run build
       
+      # Build bento-layout
+      - name: Install dependencies (bento-layout)
+        working-directory: ./bento-layout
+        run: npm install
+      
+      - name: Build bento-layout
+        working-directory: ./bento-layout
+        run: npm run build
+      
       # Build chat-input-prototype
       - name: Install dependencies (chat-input-prototype)
         working-directory: ./chat-input-prototype
@@ -63,6 +73,7 @@ jobs:
         run: |
           mkdir -p deploy
           cp -r agent-sessions/dist deploy/agent-sessions
+          cp -r bento-layout/dist deploy/bento-layout
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
           cp -r theme-2026-blur-test deploy/theme-2026-blur-test
