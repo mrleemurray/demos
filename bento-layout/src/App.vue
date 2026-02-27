@@ -196,16 +196,6 @@
         <span class="cell-title">{{ dragging.panel.title }}</span>
       </div>
     </div>
-
-    <footer class="statusbar">
-      <span>{{ panels.length }} panels</span>
-      <span class="separator">·</span>
-      <span>{{ workspaces.length }} workspace{{ workspaces.length > 1 ? 's' : '' }}</span>
-      <span class="separator">·</span>
-      <span>{{ gridCols }}×{{ gridRows }} grid</span>
-      <span class="separator">·</span>
-      <span>Click panel header icons to split or change group</span>
-    </footer>
   </div>
 </template>
 
@@ -418,8 +408,7 @@ function openChatInNewWorkspace() {
 // ─── Add new chat ─────────────────────────────────────────────────
 function addChat() {
   const ws = activeWorkspace.value
-  const sessionGroup = groups[ws.chatColorIndex % groups.length].id
-  ws.chatColorIndex++
+  const sessionGroup = ws.group
   // Place new chat on the right, stacking below existing chats
   const chatCol = 9
   const chatWidth = 4
@@ -936,13 +925,6 @@ async function runChatSpawn(chatPanel, text) {
     markOccupied(slot.row, slot.col, span, rowSpan)
   }
 
-  // Keep chat panels spanning the full grid height
-  for (const p of panels.value) {
-    if (p.isChat) {
-      p.rowSpan = gridRows.value - p.row + 1
-    }
-  }
-
   // Stagger spawn each panel with budding animation
   for (const p of newPanels) {
     panels.value.push(p)
@@ -972,8 +954,7 @@ async function runChatSpawn(chatPanel, text) {
   justify-content: space-between;
   height: 36px;
   padding: 0 12px;
-  background: var(--vscode-titleBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  background: transparent;
   flex-shrink: 0;
   gap: 12px;
 }
@@ -1486,22 +1467,6 @@ async function runChatSpawn(chatPanel, text) {
   color: var(--vscode-editor-background);
   font-size: 11px;
   font-weight: 600;
-}
-
-/* ─── Status bar ─────────────────────────────────────────────── */
-.statusbar {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 12px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  font-size: 11px;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.separator {
-  opacity: 0.5;
 }
 
 /* ─── Chat cell ───────────────────────────────────────────────── */
