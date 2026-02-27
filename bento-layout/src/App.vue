@@ -141,8 +141,19 @@
         </div>
 
         <!-- Panel content -->
-        <div class="cell-content" v-if="!panel.isChat">
-          <div class="mock-content">
+        <div class="cell-content" v-if="!panel.isChat" :class="'content-' + (panel.contentType || 'code')">
+          <div v-if="panel.lines && panel.lines.length" class="code-lines">
+            <div
+              v-for="(line, li) in panel.lines"
+              :key="li"
+              class="code-line"
+              :class="'line-' + (line.kind || 'default')"
+            >
+              <span class="line-num">{{ li + 1 }}</span>
+              <span class="line-text">{{ line.text }}</span>
+            </div>
+          </div>
+          <div v-else class="mock-content">
             <i :class="'codicon codicon-' + panel.contentIcon" class="content-icon"></i>
             <span class="content-label">{{ panel.contentLabel }}</span>
           </div>
@@ -273,6 +284,36 @@ function makeChatPanel(col, row, colSpan, rowSpan) {
   })
 }
 
+function makeCustomPanel(col, row, colSpan, rowSpan, groupId, opts) {
+  return reactive({
+    id: nextId++,
+    col, row, colSpan, rowSpan,
+    group: groupId,
+    icon: opts.icon || 'file-code',
+    title: opts.title || 'Untitled',
+    contentIcon: opts.contentIcon || 'code',
+    contentLabel: opts.contentLabel || '',
+    contentType: opts.contentType || 'code',
+    lines: opts.lines || [],
+    isChat: false,
+    messages: [],
+  })
+}
+
+function makeCustomChatPanel(col, row, colSpan, rowSpan, groupId, messages) {
+  return reactive({
+    id: nextId++,
+    col, row, colSpan, rowSpan,
+    group: groupId,
+    icon: 'sparkle',
+    title: 'Chat',
+    contentIcon: 'comment-discussion',
+    contentLabel: 'AI Chat',
+    isChat: true,
+    messages: messages || [{ role: 'assistant', text: 'Describe a layout and I\'ll build it for you.' }],
+  })
+}
+
 // ─── Workspace model ─────────────────────────────────────────────
 function createWorkspace(sessionGroup) {
   const chat = makeChatPanel(9, 1, 4, 8)
@@ -286,7 +327,268 @@ function createWorkspace(sessionGroup) {
   })
 }
 
-const workspaces = ref([createWorkspace('purple')])
+function createDemoWorkspaces() {
+  // ─── Frontend Session (blue / Session 1) ───────────────────────
+  const feChat = makeCustomChatPanel(9, 1, 4, 8, 'blue', [
+    { role: 'assistant', text: 'What would you like to build?' },
+    { role: 'user', text: 'Build a responsive dashboard with React and TypeScript' },
+    { role: 'assistant', text: 'I\'ll scaffold a dashboard with reusable components, CSS modules for styling, and a custom data hook. Setting up the workspace now…' },
+    { role: 'user', text: 'Add a chart component for data visualization' },
+    { role: 'assistant', text: 'Spawning layout with editor, styles, data hook, terminal, and browser preview…' },
+  ])
+  const feWorkspace = reactive({
+    id: nextWorkspaceId++,
+    group: 'blue',
+    panels: [
+      makeCustomPanel(1, 1, 4, 4, 'blue', {
+        icon: 'file-code', title: 'Dashboard.tsx',
+        contentIcon: 'code', contentLabel: 'React Component',
+        lines: [
+          { text: 'import React from \'react\';', kind: 'keyword' },
+          { text: 'import { useData } from \'./useData\';', kind: 'keyword' },
+          { text: 'import styles from \'./styles.module.css\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export function Dashboard() {', kind: 'fn' },
+          { text: '  const { metrics, loading } = useData();', kind: 'default' },
+          { text: '' },
+          { text: '  if (loading) return <Skeleton />;', kind: 'default' },
+          { text: '' },
+          { text: '  return (', kind: 'default' },
+          { text: '    <div className={styles.grid}>', kind: 'tag' },
+          { text: '      <MetricCard value={metrics.users} />', kind: 'tag' },
+          { text: '      <MetricCard value={metrics.revenue} />', kind: 'tag' },
+          { text: '      <ChartPanel data={metrics.trend} />', kind: 'tag' },
+          { text: '    </div>', kind: 'tag' },
+          { text: '  );', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(5, 1, 4, 4, 'blue', {
+        icon: 'file-code', title: 'styles.module.css',
+        contentIcon: 'symbol-color', contentLabel: 'CSS Modules',
+        lines: [
+          { text: '.grid {', kind: 'fn' },
+          { text: '  display: grid;', kind: 'default' },
+          { text: '  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));', kind: 'default' },
+          { text: '  gap: 16px;', kind: 'default' },
+          { text: '  padding: 24px;', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: '.card {', kind: 'fn' },
+          { text: '  background: var(--surface-card);', kind: 'default' },
+          { text: '  border-radius: 12px;', kind: 'default' },
+          { text: '  padding: 20px;', kind: 'default' },
+          { text: '  box-shadow: 0 1px 3px rgba(0,0,0,0.12);', kind: 'default' },
+          { text: '  transition: transform 0.2s ease;', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: '.card:hover {', kind: 'fn' },
+          { text: '  transform: translateY(-2px);', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(1, 5, 3, 4, 'blue', {
+        icon: 'symbol-method', title: 'useData.ts',
+        contentIcon: 'symbol-method', contentLabel: 'Custom Hook',
+        lines: [
+          { text: 'import { useState, useEffect } from \'react\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'interface Metrics {', kind: 'fn' },
+          { text: '  users: number;', kind: 'default' },
+          { text: '  revenue: number;', kind: 'default' },
+          { text: '  trend: DataPoint[];', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'export function useData() {', kind: 'fn' },
+          { text: '  const [metrics, setMetrics] = useState<Metrics>();', kind: 'default' },
+          { text: '  const [loading, setLoading] = useState(true);', kind: 'default' },
+          { text: '' },
+          { text: '  useEffect(() => {', kind: 'keyword' },
+          { text: '    fetch(\'/api/dashboard\')', kind: 'string' },
+          { text: '      .then(r => r.json())', kind: 'default' },
+          { text: '      .then(setMetrics)', kind: 'default' },
+          { text: '      .finally(() => setLoading(false));', kind: 'default' },
+          { text: '  }, []);', kind: 'keyword' },
+          { text: '' },
+          { text: '  return { metrics, loading };', kind: 'keyword' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(4, 5, 3, 4, 'blue', {
+        icon: 'terminal', title: 'Terminal',
+        contentIcon: 'terminal-bash', contentLabel: 'npm run dev',
+        contentType: 'terminal',
+        lines: [
+          { text: '$ npm run dev', kind: 'cmd' },
+          { text: '' },
+          { text: '  VITE v5.4.2  ready in 312 ms', kind: 'success' },
+          { text: '' },
+          { text: '  ➜  Local:   http://localhost:3000/', kind: 'info' },
+          { text: '  ➜  Network: http://192.168.1.42:3000/', kind: 'info' },
+          { text: '  ➜  press h + enter to show help', kind: 'dim' },
+          { text: '' },
+          { text: '[HMR] connected.', kind: 'success' },
+          { text: '✓ 47 modules transformed.', kind: 'success' },
+          { text: '  dist/index.html          0.42 kB │ gzip:  0.29 kB', kind: 'default' },
+          { text: '  dist/assets/index.css    8.12 kB │ gzip:  2.31 kB', kind: 'default' },
+          { text: '  dist/assets/index.js   142.87 kB │ gzip: 45.92 kB', kind: 'default' },
+        ],
+      }),
+      makeCustomPanel(7, 5, 2, 4, 'blue', {
+        icon: 'globe', title: 'Preview',
+        contentIcon: 'globe', contentLabel: 'localhost:3000',
+        contentType: 'preview',
+        lines: [
+          { text: '┌─────────────────────┐', kind: 'dim' },
+          { text: '│  Dashboard          │', kind: 'info' },
+          { text: '├────────┬────────────┤', kind: 'dim' },
+          { text: '│ Users  │ Revenue    │', kind: 'default' },
+          { text: '│ 12,847 │ $48,291    │', kind: 'success' },
+          { text: '├────────┴────────────┤', kind: 'dim' },
+          { text: '│  ▂▃▅▆▇█▇▆▅▃▂▃▅▇█  │', kind: 'info' },
+          { text: '│  Trend (30 days)    │', kind: 'dim' },
+          { text: '└─────────────────────┘', kind: 'dim' },
+        ],
+      }),
+      feChat,
+    ],
+    gridRows: 8,
+    chatColorIndex: 0,
+  })
+
+  // ─── Backend Session (green / Session 2) ───────────────────────
+  const beChat = makeCustomChatPanel(9, 1, 4, 8, 'green', [
+    { role: 'assistant', text: 'What would you like to build?' },
+    { role: 'user', text: 'Set up a REST API with Express, Prisma, and JWT auth' },
+    { role: 'assistant', text: 'I\'ll create the server scaffold with authentication middleware, route handlers, and a Prisma database schema.' },
+    { role: 'user', text: 'Add rate limiting and input validation' },
+    { role: 'assistant', text: 'Building API workspace with server, auth middleware, routes, and database schema…' },
+  ])
+  const beWorkspace = reactive({
+    id: nextWorkspaceId++,
+    group: 'green',
+    panels: [
+      makeCustomPanel(1, 1, 5, 4, 'green', {
+        icon: 'file-code', title: 'server.ts',
+        contentIcon: 'server', contentLabel: 'Express Server',
+        lines: [
+          { text: 'import express from \'express\';', kind: 'keyword' },
+          { text: 'import cors from \'cors\';', kind: 'keyword' },
+          { text: 'import helmet from \'helmet\';', kind: 'keyword' },
+          { text: 'import { rateLimit } from \'express-rate-limit\';', kind: 'keyword' },
+          { text: 'import { authRouter } from \'./routes\';', kind: 'keyword' },
+          { text: 'import { authMiddleware } from \'./auth.middleware\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'const app = express();', kind: 'fn' },
+          { text: '' },
+          { text: 'app.use(helmet());', kind: 'default' },
+          { text: 'app.use(cors({ origin: process.env.ALLOWED_ORIGINS }));', kind: 'default' },
+          { text: 'app.use(express.json({ limit: \'10mb\' }));', kind: 'default' },
+          { text: 'app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));', kind: 'default' },
+          { text: '' },
+          { text: 'app.use(\'/api\', authMiddleware, authRouter);', kind: 'string' },
+          { text: '' },
+          { text: 'app.listen(3001, () => {', kind: 'fn' },
+          { text: '  console.log(\'Server running on :3001\');', kind: 'string' },
+          { text: '});', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(6, 1, 3, 4, 'green', {
+        icon: 'lock', title: 'auth.middleware.ts',
+        contentIcon: 'shield', contentLabel: 'JWT Authentication',
+        lines: [
+          { text: 'import jwt from \'jsonwebtoken\';', kind: 'keyword' },
+          { text: 'import { Request, Response, NextFunction } from \'express\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export function authMiddleware(', kind: 'fn' },
+          { text: '  req: Request,', kind: 'default' },
+          { text: '  res: Response,', kind: 'default' },
+          { text: '  next: NextFunction', kind: 'default' },
+          { text: ') {', kind: 'fn' },
+          { text: '  const token = req.headers.authorization', kind: 'default' },
+          { text: '    ?.replace(\'Bearer \', \'\');', kind: 'string' },
+          { text: '' },
+          { text: '  if (!token) {', kind: 'keyword' },
+          { text: '    return res.status(401).json({', kind: 'default' },
+          { text: '      error: \'Authentication required\'', kind: 'string' },
+          { text: '    });', kind: 'default' },
+          { text: '  }', kind: 'keyword' },
+          { text: '' },
+          { text: '  const decoded = jwt.verify(token, SECRET);', kind: 'default' },
+          { text: '  req.user = decoded;', kind: 'default' },
+          { text: '  next();', kind: 'fn' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(1, 5, 4, 4, 'green', {
+        icon: 'git-merge', title: 'routes.ts',
+        contentIcon: 'list-flat', contentLabel: 'API Endpoints',
+        lines: [
+          { text: 'import { Router } from \'express\';', kind: 'keyword' },
+          { text: 'import { validate } from \'./validator\';', kind: 'keyword' },
+          { text: 'import { prisma } from \'./db\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export const authRouter = Router();', kind: 'fn' },
+          { text: '' },
+          { text: 'authRouter.get(\'/users\', async (req, res) => {', kind: 'string' },
+          { text: '  const users = await prisma.user.findMany({', kind: 'default' },
+          { text: '    select: { id: true, email: true, role: true },', kind: 'default' },
+          { text: '    take: 50,', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '  res.json(users);', kind: 'default' },
+          { text: '});', kind: 'fn' },
+          { text: '' },
+          { text: 'authRouter.post(\'/users\', validate, async (req, res) => {', kind: 'string' },
+          { text: '  const user = await prisma.user.create({', kind: 'default' },
+          { text: '    data: req.body,', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '  res.status(201).json(user);', kind: 'default' },
+          { text: '});', kind: 'fn' },
+        ],
+      }),
+      makeCustomPanel(5, 5, 4, 4, 'green', {
+        icon: 'database', title: 'schema.prisma',
+        contentIcon: 'database', contentLabel: 'Database Schema',
+        contentType: 'code',
+        lines: [
+          { text: 'datasource db {', kind: 'fn' },
+          { text: '  provider = "postgresql"', kind: 'string' },
+          { text: '  url      = env("DATABASE_URL")', kind: 'string' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'model User {', kind: 'fn' },
+          { text: '  id        Int      @id @default(autoincrement())', kind: 'default' },
+          { text: '  email     String   @unique', kind: 'default' },
+          { text: '  password  String', kind: 'default' },
+          { text: '  role      Role     @default(USER)', kind: 'keyword' },
+          { text: '  posts     Post[]', kind: 'default' },
+          { text: '  createdAt DateTime @default(now())', kind: 'dim' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'model Post {', kind: 'fn' },
+          { text: '  id        Int      @id @default(autoincrement())', kind: 'default' },
+          { text: '  title     String', kind: 'default' },
+          { text: '  content   String?', kind: 'default' },
+          { text: '  author    User     @relation(fields: [authorId])', kind: 'keyword' },
+          { text: '  authorId  Int', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'enum Role {', kind: 'fn' },
+          { text: '  USER', kind: 'keyword' },
+          { text: '  ADMIN', kind: 'keyword' },
+          { text: '}', kind: 'fn' },
+        ],
+      }),
+      beChat,
+    ],
+    gridRows: 8,
+    chatColorIndex: 0,
+  })
+
+  return [feWorkspace, beWorkspace]
+}
+
+const workspaces = ref(createDemoWorkspaces())
 const activeWorkspaceId = ref(workspaces.value[0].id)
 const activeWorkspace = computed(() => workspaces.value.find(w => w.id === activeWorkspaceId.value))
 
@@ -737,9 +1039,8 @@ function onMouseUp() {
 function resetLayout() {
   nextId = 1
   nextWorkspaceId = 1
-  const ws = createWorkspace('purple')
-  workspaces.value = [ws]
-  activeWorkspaceId.value = ws.id
+  workspaces.value = createDemoWorkspaces()
+  activeWorkspaceId.value = workspaces.value[0].id
   selectedPanel.value = null
   selectedGroup.value = null
 }
@@ -747,53 +1048,540 @@ function resetLayout() {
 // ─── Chat spawn recipes ──────────────────────────────────────────
 // Group is no longer per-panel — all panels from a chat message share one color
 const spawnRecipes = [
+  // ── Frontend recipes ──────────────────────────────────────────
+  {
+    match: /component|react|vue|widget|ui/i,
+    reply: 'Spawning component workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'Component.tsx', contentIcon: 'code', contentLabel: 'React Component',
+        lines: [
+          { text: 'import React from \'react\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'interface Props {', kind: 'fn' },
+          { text: '  title: string;', kind: 'default' },
+          { text: '  children: React.ReactNode;', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'export function Component({ title, children }: Props) {', kind: 'fn' },
+          { text: '  return (', kind: 'default' },
+          { text: '    <div className="wrapper">', kind: 'tag' },
+          { text: '      <h2>{title}</h2>', kind: 'tag' },
+          { text: '      {children}', kind: 'tag' },
+          { text: '    </div>', kind: 'tag' },
+          { text: '  );', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'Component.test.tsx', contentIcon: 'beaker', contentLabel: 'Unit Tests',
+        lines: [
+          { text: 'import { render, screen } from \'@testing-library/react\';', kind: 'keyword' },
+          { text: 'import { Component } from \'./Component\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'describe(\'Component\', () => {', kind: 'fn' },
+          { text: '  it(\'renders title\', () => {', kind: 'string' },
+          { text: '    render(<Component title="Hello">body</Component>);', kind: 'default' },
+          { text: '    expect(screen.getByText(\'Hello\')).toBeTruthy();', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '' },
+          { text: '  it(\'renders children\', () => {', kind: 'string' },
+          { text: '    render(<Component title="T"><span>child</span></Component>);', kind: 'default' },
+          { text: '    expect(screen.getByText(\'child\')).toBeTruthy();', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '});', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'book', title: 'Component.stories.ts', contentIcon: 'book', contentLabel: 'Storybook',
+        lines: [
+          { text: 'import type { Meta, StoryObj } from \'@storybook/react\';', kind: 'keyword' },
+          { text: 'import { Component } from \'./Component\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'const meta: Meta<typeof Component> = {', kind: 'fn' },
+          { text: '  title: \'UI/Component\',', kind: 'string' },
+          { text: '  component: Component,', kind: 'default' },
+          { text: '};', kind: 'fn' },
+          { text: 'export default meta;', kind: 'keyword' },
+          { text: '' },
+          { text: 'export const Default: StoryObj = {', kind: 'fn' },
+          { text: '  args: { title: \'Hello World\' },', kind: 'string' },
+          { text: '};', kind: 'fn' },
+        ],
+      },
+      { colSpan: 8, rowSpan: 2, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run storybook', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run storybook', kind: 'cmd' },
+          { text: '' },
+          { text: 'storybook dev -p 6006', kind: 'dim' },
+          { text: '╭─────────────────────────────────────╮', kind: 'dim' },
+          { text: '│                                     │', kind: 'dim' },
+          { text: '│   Storybook 8.4 started             │', kind: 'success' },
+          { text: '│   http://localhost:6006/             │', kind: 'info' },
+          { text: '│                                     │', kind: 'dim' },
+          { text: '╰─────────────────────────────────────╯', kind: 'dim' },
+        ],
+      },
+    ],
+  },
+  {
+    match: /style|css|tailwind|theme|design/i,
+    reply: 'Setting up styling workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'tokens.css', contentIcon: 'symbol-color', contentLabel: 'Design Tokens',
+        lines: [
+          { text: ':root {', kind: 'fn' },
+          { text: '  /* Colors */', kind: 'comment' },
+          { text: '  --color-primary: #3b82f6;', kind: 'default' },
+          { text: '  --color-secondary: #10b981;', kind: 'default' },
+          { text: '  --color-surface: #1e1e2e;', kind: 'default' },
+          { text: '' },
+          { text: '  /* Spacing */', kind: 'comment' },
+          { text: '  --space-xs: 4px;', kind: 'default' },
+          { text: '  --space-sm: 8px;', kind: 'default' },
+          { text: '  --space-md: 16px;', kind: 'default' },
+          { text: '  --space-lg: 24px;', kind: 'default' },
+          { text: '' },
+          { text: '  /* Typography */', kind: 'comment' },
+          { text: '  --font-sans: \'Inter\', system-ui, sans-serif;', kind: 'string' },
+          { text: '  --font-mono: \'Fira Code\', monospace;', kind: 'string' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'layout.module.css', contentIcon: 'symbol-color', contentLabel: 'Layout Styles',
+        lines: [
+          { text: '.container {', kind: 'fn' },
+          { text: '  max-width: 1200px;', kind: 'default' },
+          { text: '  margin: 0 auto;', kind: 'default' },
+          { text: '  padding: var(--space-lg);', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: '.sidebar {', kind: 'fn' },
+          { text: '  width: 260px;', kind: 'default' },
+          { text: '  border-right: 1px solid var(--color-border);', kind: 'default' },
+          { text: '  padding: var(--space-md);', kind: 'default' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: '.main {', kind: 'fn' },
+          { text: '  flex: 1;', kind: 'default' },
+          { text: '  min-width: 0;', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'globe', title: 'Preview', contentIcon: 'globe', contentLabel: 'Hot Reload Preview' },
+      { colSpan: 8, rowSpan: 2, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run dev', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run dev', kind: 'cmd' },
+          { text: '' },
+          { text: '  VITE v5.4.2  ready in 248 ms', kind: 'success' },
+          { text: '  ➜  Local:   http://localhost:3000/', kind: 'info' },
+          { text: '  ➜  press h + enter to show help', kind: 'dim' },
+        ],
+      },
+    ],
+  },
+  {
+    match: /page|route|navigation|layout/i,
+    reply: 'Scaffolding page routing workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'router.tsx', contentIcon: 'git-merge', contentLabel: 'Route Config',
+        lines: [
+          { text: 'import { createBrowserRouter } from \'react-router-dom\';', kind: 'keyword' },
+          { text: 'import { Layout } from \'./Layout\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export const router = createBrowserRouter([', kind: 'fn' },
+          { text: '  { path: \'/\', element: <Layout />, children: [', kind: 'string' },
+          { text: '    { index: true, element: <Home /> },', kind: 'string' },
+          { text: '    { path: \'dashboard\', element: <Dashboard /> },', kind: 'string' },
+          { text: '    { path: \'settings\', element: <Settings /> },', kind: 'string' },
+          { text: '  ]},', kind: 'default' },
+          { text: ']);', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'Layout.tsx', contentIcon: 'code', contentLabel: 'App Layout',
+        lines: [
+          { text: 'import { Outlet } from \'react-router-dom\';', kind: 'keyword' },
+          { text: 'import { Sidebar } from \'./Sidebar\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export function Layout() {', kind: 'fn' },
+          { text: '  return (', kind: 'default' },
+          { text: '    <div className="app-shell">', kind: 'tag' },
+          { text: '      <Sidebar />', kind: 'tag' },
+          { text: '      <main><Outlet /></main>', kind: 'tag' },
+          { text: '    </div>', kind: 'tag' },
+          { text: '  );', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'Sidebar.tsx', contentIcon: 'code', contentLabel: 'Navigation',
+        lines: [
+          { text: 'import { NavLink } from \'react-router-dom\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'const links = [', kind: 'fn' },
+          { text: '  { to: \'/\', label: \'Home\', icon: \'home\' },', kind: 'string' },
+          { text: '  { to: \'/dashboard\', label: \'Dashboard\', icon: \'chart\' },', kind: 'string' },
+          { text: '  { to: \'/settings\', label: \'Settings\', icon: \'gear\' },', kind: 'string' },
+          { text: '];', kind: 'fn' },
+          { text: '' },
+          { text: 'export function Sidebar() {', kind: 'fn' },
+          { text: '  return (', kind: 'default' },
+          { text: '    <nav className="sidebar">', kind: 'tag' },
+          { text: '      {links.map(l => <NavLink key={l.to} to={l.to}>{l.label}</NavLink>)}', kind: 'tag' },
+          { text: '    </nav>', kind: 'tag' },
+          { text: '  );', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 3, icon: 'globe', title: 'Preview', contentIcon: 'globe', contentLabel: 'localhost:3000' },
+      { colSpan: 4, rowSpan: 3, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run dev', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run dev', kind: 'cmd' },
+          { text: '' },
+          { text: '  VITE v5.4.2  ready in 312 ms', kind: 'success' },
+          { text: '  ➜  Local:   http://localhost:3000/', kind: 'info' },
+        ],
+      },
+    ],
+  },
+  // ── Backend recipes ───────────────────────────────────────────
+  {
+    match: /api|endpoint|rest|graphql/i,
+    reply: 'Spawning API endpoint workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'handler.ts', contentIcon: 'code', contentLabel: 'Route Handler',
+        lines: [
+          { text: 'import { Request, Response } from \'express\';', kind: 'keyword' },
+          { text: 'import { validate } from \'./validator\';', kind: 'keyword' },
+          { text: 'import { prisma } from \'./db\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export async function getItems(req: Request, res: Response) {', kind: 'fn' },
+          { text: '  const { page = 1, limit = 20 } = req.query;', kind: 'default' },
+          { text: '  const items = await prisma.item.findMany({', kind: 'default' },
+          { text: '    skip: (page - 1) * limit,', kind: 'default' },
+          { text: '    take: limit,', kind: 'default' },
+          { text: '    orderBy: { createdAt: \'desc\' },', kind: 'string' },
+          { text: '  });', kind: 'default' },
+          { text: '  res.json({ items, page, limit });', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'shield', title: 'validator.ts', contentIcon: 'shield', contentLabel: 'Input Validation',
+        lines: [
+          { text: 'import { z } from \'zod\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export const createItemSchema = z.object({', kind: 'fn' },
+          { text: '  name: z.string().min(1).max(100),', kind: 'default' },
+          { text: '  description: z.string().optional(),', kind: 'default' },
+          { text: '  price: z.number().positive(),', kind: 'default' },
+          { text: '  category: z.enum([\'A\', \'B\', \'C\']),', kind: 'string' },
+          { text: '});', kind: 'fn' },
+          { text: '' },
+          { text: 'export function validate(schema: z.ZodSchema) {', kind: 'fn' },
+          { text: '  return (req, res, next) => {', kind: 'default' },
+          { text: '    const result = schema.safeParse(req.body);', kind: 'default' },
+          { text: '    if (!result.success) return res.status(400).json(result.error);', kind: 'default' },
+          { text: '    req.body = result.data;', kind: 'default' },
+          { text: '    next();', kind: 'default' },
+          { text: '  };', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'beaker', title: 'handler.test.ts', contentIcon: 'beaker', contentLabel: 'API Tests',
+        lines: [
+          { text: 'import request from \'supertest\';', kind: 'keyword' },
+          { text: 'import { app } from \'./server\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'describe(\'GET /api/items\', () => {', kind: 'fn' },
+          { text: '  it(\'returns paginated items\', async () => {', kind: 'string' },
+          { text: '    const res = await request(app).get(\'/api/items\');', kind: 'default' },
+          { text: '    expect(res.status).toBe(200);', kind: 'default' },
+          { text: '    expect(res.body.items).toBeInstanceOf(Array);', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '' },
+          { text: '  it(\'validates pagination params\', async () => {', kind: 'string' },
+          { text: '    const res = await request(app).get(\'/api/items?page=-1\');', kind: 'default' },
+          { text: '    expect(res.status).toBe(400);', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '});', kind: 'fn' },
+        ],
+      },
+      { colSpan: 8, rowSpan: 2, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run test:watch', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run test:watch', kind: 'cmd' },
+          { text: '' },
+          { text: ' PASS  src/handler.test.ts', kind: 'success' },
+          { text: '  GET /api/items', kind: 'default' },
+          { text: '    ✓ returns paginated items (12 ms)', kind: 'success' },
+          { text: '    ✓ validates pagination params (8 ms)', kind: 'success' },
+          { text: '' },
+          { text: 'Tests:  2 passed, 2 total', kind: 'success' },
+          { text: 'Time:   0.842 s', kind: 'dim' },
+        ],
+      },
+    ],
+  },
+  {
+    match: /database|schema|migration|prisma|sql/i,
+    reply: 'Setting up database workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'database', title: 'migration.sql', contentIcon: 'database', contentLabel: 'Migration Script',
+        lines: [
+          { text: '-- CreateTable', kind: 'comment' },
+          { text: 'CREATE TABLE "User" (', kind: 'fn' },
+          { text: '  "id"        SERIAL PRIMARY KEY,', kind: 'default' },
+          { text: '  "email"     VARCHAR(255) UNIQUE NOT NULL,', kind: 'default' },
+          { text: '  "password"  VARCHAR(255) NOT NULL,', kind: 'default' },
+          { text: '  "role"      "Role" DEFAULT \'USER\',', kind: 'string' },
+          { text: '  "createdAt" TIMESTAMP DEFAULT NOW()', kind: 'keyword' },
+          { text: ');', kind: 'fn' },
+          { text: '' },
+          { text: '-- CreateIndex', kind: 'comment' },
+          { text: 'CREATE UNIQUE INDEX "User_email_key" ON "User"("email");', kind: 'default' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'seed.ts', contentIcon: 'code', contentLabel: 'Seed Data',
+        lines: [
+          { text: 'import { prisma } from \'./db\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'async function seed() {', kind: 'fn' },
+          { text: '  await prisma.user.createMany({', kind: 'default' },
+          { text: '    data: [', kind: 'default' },
+          { text: '      { email: \'admin@test.com\', role: \'ADMIN\' },', kind: 'string' },
+          { text: '      { email: \'user@test.com\',  role: \'USER\' },', kind: 'string' },
+          { text: '    ],', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '  console.log(\'Seeded 2 users\');', kind: 'string' },
+          { text: '}', kind: 'fn' },
+          { text: '' },
+          { text: 'seed().catch(console.error);', kind: 'default' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'prisma migrate dev', contentType: 'terminal',
+        lines: [
+          { text: '$ npx prisma migrate dev', kind: 'cmd' },
+          { text: '' },
+          { text: 'Environment variables loaded from .env', kind: 'dim' },
+          { text: 'Prisma schema loaded from prisma/schema.prisma', kind: 'dim' },
+          { text: '' },
+          { text: '✓ Generated Prisma Client', kind: 'success' },
+          { text: '✓ Applied migration: 20260227_init', kind: 'success' },
+          { text: '' },
+          { text: 'Database is now in sync with the schema.', kind: 'success' },
+        ],
+      },
+    ],
+  },
+  {
+    match: /auth|login|jwt|session|token/i,
+    reply: 'Spawning authentication workspace…',
+    panels: [
+      { colSpan: 4, rowSpan: 4, icon: 'lock', title: 'auth.service.ts', contentIcon: 'lock', contentLabel: 'Auth Service',
+        lines: [
+          { text: 'import jwt from \'jsonwebtoken\';', kind: 'keyword' },
+          { text: 'import bcrypt from \'bcryptjs\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'const SECRET = process.env.JWT_SECRET!;', kind: 'default' },
+          { text: '' },
+          { text: 'export async function login(email: string, password: string) {', kind: 'fn' },
+          { text: '  const user = await prisma.user.findUnique({ where: { email } });', kind: 'default' },
+          { text: '  if (!user) throw new Error(\'User not found\');', kind: 'default' },
+          { text: '' },
+          { text: '  const valid = await bcrypt.compare(password, user.password);', kind: 'default' },
+          { text: '  if (!valid) throw new Error(\'Invalid password\');', kind: 'default' },
+          { text: '' },
+          { text: '  return jwt.sign({ sub: user.id, role: user.role }, SECRET, {', kind: 'default' },
+          { text: '    expiresIn: \'7d\',', kind: 'string' },
+          { text: '  });', kind: 'default' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'file-code', title: 'auth.controller.ts', contentIcon: 'code', contentLabel: 'Auth Controller',
+        lines: [
+          { text: 'import { Router } from \'express\';', kind: 'keyword' },
+          { text: 'import { login } from \'./auth.service\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'export const authRouter = Router();', kind: 'fn' },
+          { text: '' },
+          { text: 'authRouter.post(\'/login\', async (req, res) => {', kind: 'string' },
+          { text: '  try {', kind: 'keyword' },
+          { text: '    const token = await login(req.body.email, req.body.password);', kind: 'default' },
+          { text: '    res.json({ token });', kind: 'default' },
+          { text: '  } catch (err) {', kind: 'keyword' },
+          { text: '    res.status(401).json({ error: err.message });', kind: 'default' },
+          { text: '  }', kind: 'keyword' },
+          { text: '});', kind: 'fn' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 4, icon: 'beaker', title: 'auth.test.ts', contentIcon: 'beaker', contentLabel: 'Auth Tests',
+        lines: [
+          { text: 'import { login } from \'./auth.service\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'describe(\'auth\', () => {', kind: 'fn' },
+          { text: '  it(\'returns JWT on valid login\', async () => {', kind: 'string' },
+          { text: '    const token = await login(\'admin@test.com\', \'password\');', kind: 'default' },
+          { text: '    expect(token).toBeDefined();', kind: 'default' },
+          { text: '    expect(typeof token).toBe(\'string\');', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '' },
+          { text: '  it(\'rejects invalid password\', async () => {', kind: 'string' },
+          { text: '    await expect(login(\'admin@test.com\', \'wrong\'))', kind: 'default' },
+          { text: '      .rejects.toThrow(\'Invalid password\');', kind: 'string' },
+          { text: '  });', kind: 'default' },
+          { text: '});', kind: 'fn' },
+        ],
+      },
+      { colSpan: 8, rowSpan: 2, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run test', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run test', kind: 'cmd' },
+          { text: '' },
+          { text: ' PASS  src/auth.test.ts', kind: 'success' },
+          { text: '  auth', kind: 'default' },
+          { text: '    ✓ returns JWT on valid login (15 ms)', kind: 'success' },
+          { text: '    ✓ rejects invalid password (6 ms)', kind: 'success' },
+          { text: '' },
+          { text: 'Tests:  2 passed, 2 total', kind: 'success' },
+        ],
+      },
+    ],
+  },
+  // ── General recipes ───────────────────────────────────────────
   {
     match: /debug|breakpoint|watch/i,
     reply: 'Spawning debug workspace…',
     panels: [
-      { colSpan: 6, rowSpan: 3, idx: 0 },
-      { colSpan: 6, rowSpan: 3, idx: 2 },
-      { colSpan: 4, rowSpan: 2, idx: 3 },
-      { colSpan: 4, rowSpan: 2, idx: 1 },
-      { colSpan: 4, rowSpan: 2, idx: 5 },
-    ],
-  },
-  {
-    match: /terminal|shell|command/i,
-    reply: 'Opening terminal workspace…',
-    panels: [
-      { colSpan: 6, rowSpan: 4, idx: 1 },
-      { colSpan: 6, rowSpan: 4, idx: 1 },
-      { colSpan: 12, rowSpan: 2, idx: 3 },
-    ],
-  },
-  {
-    match: /editor|code|file/i,
-    reply: 'Setting up editor layout…',
-    panels: [
-      { colSpan: 4, rowSpan: 4, idx: 0 },
-      { colSpan: 4, rowSpan: 4, idx: 9 },
-      { colSpan: 4, rowSpan: 4, idx: 0 },
-      { colSpan: 12, rowSpan: 2, idx: 4 },
+      { colSpan: 6, rowSpan: 3, icon: 'file-code', title: 'app.ts', contentIcon: 'code', contentLabel: 'Source File',
+        lines: [
+          { text: 'import { processQueue } from \'./queue\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'async function main() {', kind: 'fn' },
+          { text: '  const items = await fetchItems();  // ← breakpoint', kind: 'default' },
+          { text: '  for (const item of items) {', kind: 'keyword' },
+          { text: '    await processQueue(item);', kind: 'default' },
+          { text: '  }', kind: 'keyword' },
+          { text: '}', kind: 'fn' },
+        ],
+      },
+      { colSpan: 6, rowSpan: 3, icon: 'debug-alt', title: 'Debug Console', contentIcon: 'bug', contentLabel: 'Breakpoints', contentType: 'terminal',
+        lines: [
+          { text: 'Debugger attached.', kind: 'success' },
+          { text: '> items', kind: 'cmd' },
+          { text: '  [{ id: 1, name: \'Task A\' }, { id: 2, name: \'Task B\' }]', kind: 'default' },
+          { text: '> items.length', kind: 'cmd' },
+          { text: '  2', kind: 'info' },
+          { text: '> typeof processQueue', kind: 'cmd' },
+          { text: '  \'function\'', kind: 'string' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 2, icon: 'output', title: 'Output', contentIcon: 'list-flat', contentLabel: 'Build Output', contentType: 'terminal',
+        lines: [
+          { text: '[info] TypeScript compilation complete', kind: 'info' },
+          { text: '[info] Watching for changes…', kind: 'dim' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 2, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'node --inspect', contentType: 'terminal',
+        lines: [
+          { text: '$ node --inspect dist/app.js', kind: 'cmd' },
+          { text: 'Debugger listening on ws://127.0.0.1:9229', kind: 'info' },
+        ],
+      },
+      { colSpan: 4, rowSpan: 2, icon: 'search', title: 'Call Stack', contentIcon: 'search', contentLabel: 'Stack Frames', contentType: 'terminal',
+        lines: [
+          { text: '▶ main               app.ts:4', kind: 'info' },
+          { text: '  processQueue       queue.ts:12', kind: 'default' },
+          { text: '  Module._compile    node:internal', kind: 'dim' },
+        ],
+      },
     ],
   },
   {
     match: /test|spec|assert/i,
     reply: 'Building test workspace…',
     panels: [
-      { colSpan: 6, rowSpan: 3, idx: 0 },
-      { colSpan: 6, rowSpan: 3, idx: 7 },
-      { colSpan: 6, rowSpan: 3, idx: 1 },
-      { colSpan: 6, rowSpan: 3, idx: 3 },
+      { colSpan: 6, rowSpan: 3, icon: 'file-code', title: 'app.test.ts', contentIcon: 'code', contentLabel: 'Test Suite',
+        lines: [
+          { text: 'import { describe, it, expect } from \'vitest\';', kind: 'keyword' },
+          { text: 'import { sum, multiply } from \'./math\';', kind: 'keyword' },
+          { text: '' },
+          { text: 'describe(\'math\', () => {', kind: 'fn' },
+          { text: '  it(\'adds numbers\', () => {', kind: 'string' },
+          { text: '    expect(sum(1, 2)).toBe(3);', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '' },
+          { text: '  it(\'multiplies numbers\', () => {', kind: 'string' },
+          { text: '    expect(multiply(3, 4)).toBe(12);', kind: 'default' },
+          { text: '  });', kind: 'default' },
+          { text: '});', kind: 'fn' },
+        ],
+      },
+      { colSpan: 6, rowSpan: 3, icon: 'beaker', title: 'Test Explorer', contentIcon: 'beaker', contentLabel: 'All Tests Passed', contentType: 'terminal',
+        lines: [
+          { text: '✓ math > adds numbers (2 ms)', kind: 'success' },
+          { text: '✓ math > multiplies numbers (1 ms)', kind: 'success' },
+          { text: '✓ utils > formats date (3 ms)', kind: 'success' },
+          { text: '✓ utils > parses input (2 ms)', kind: 'success' },
+          { text: '' },
+          { text: 'All 4 tests passed', kind: 'success' },
+        ],
+      },
+      { colSpan: 6, rowSpan: 3, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'npm run test', contentType: 'terminal',
+        lines: [
+          { text: '$ npx vitest', kind: 'cmd' },
+          { text: '' },
+          { text: ' ✓ src/math.test.ts (2)', kind: 'success' },
+          { text: ' ✓ src/utils.test.ts (2)', kind: 'success' },
+          { text: '' },
+          { text: ' Tests  4 passed (4)', kind: 'success' },
+          { text: ' Time   0.31s', kind: 'dim' },
+        ],
+      },
+      { colSpan: 6, rowSpan: 3, icon: 'output', title: 'Coverage', contentIcon: 'graph', contentLabel: '94% Coverage', contentType: 'terminal',
+        lines: [
+          { text: '----------|---------|----------', kind: 'dim' },
+          { text: 'File      | % Stmts | Uncovered', kind: 'info' },
+          { text: '----------|---------|----------', kind: 'dim' },
+          { text: 'math.ts   |   100.0 |          ', kind: 'success' },
+          { text: 'utils.ts  |    88.2 | 24-28    ', kind: 'default' },
+          { text: '----------|---------|----------', kind: 'dim' },
+          { text: 'All files |    94.1 |          ', kind: 'success' },
+          { text: '----------|---------|----------', kind: 'dim' },
+        ],
+      },
     ],
   },
   {
-    match: /search|find|grep/i,
-    reply: 'Launching search workspace…',
+    match: /terminal|shell|command/i,
+    reply: 'Opening terminal workspace…',
     panels: [
-      { colSpan: 8, rowSpan: 5, idx: 0 },
-      { colSpan: 4, rowSpan: 5, idx: 5 },
-      { colSpan: 12, rowSpan: 2, idx: 3 },
+      { colSpan: 6, rowSpan: 4, icon: 'terminal', title: 'Terminal 1', contentIcon: 'terminal-bash', contentLabel: 'zsh — node', contentType: 'terminal',
+        lines: [
+          { text: '$ node -v', kind: 'cmd' },
+          { text: 'v20.11.0', kind: 'default' },
+          { text: '$ npm -v', kind: 'cmd' },
+          { text: '10.2.4', kind: 'default' },
+          { text: '$ git status', kind: 'cmd' },
+          { text: 'On branch main', kind: 'info' },
+          { text: 'nothing to commit, working tree clean', kind: 'success' },
+          { text: '$ █', kind: 'cmd' },
+        ],
+      },
+      { colSpan: 6, rowSpan: 4, icon: 'terminal', title: 'Terminal 2', contentIcon: 'terminal-bash', contentLabel: 'zsh — npm', contentType: 'terminal',
+        lines: [
+          { text: '$ npm run build', kind: 'cmd' },
+          { text: '' },
+          { text: '> project@1.0.0 build', kind: 'dim' },
+          { text: '> tsc && vite build', kind: 'dim' },
+          { text: '' },
+          { text: '✓ 127 modules transformed.', kind: 'success' },
+          { text: 'dist/index.html    0.42 kB │ gzip:  0.29 kB', kind: 'default' },
+          { text: 'dist/index.js    142.87 kB │ gzip: 45.92 kB', kind: 'default' },
+          { text: '✓ built in 1.23s', kind: 'success' },
+        ],
+      },
+      { colSpan: 8, rowSpan: 2, icon: 'output', title: 'Output', contentIcon: 'list-flat', contentLabel: 'Build Output', contentType: 'terminal',
+        lines: [
+          { text: '[info] Build started…', kind: 'info' },
+          { text: '[info] TypeScript compilation successful', kind: 'success' },
+          { text: '[info] Assets bundled', kind: 'success' },
+          { text: '[info] Build complete in 1.23s', kind: 'success' },
+        ],
+      },
     ],
   },
 ]
@@ -801,11 +1589,45 @@ const spawnRecipes = [
 const defaultRecipe = {
   reply: 'Building custom layout…',
   panels: [
-    { colSpan: 6, rowSpan: 3, idx: 0 },
-    { colSpan: 6, rowSpan: 3, idx: 1 },
-    { colSpan: 4, rowSpan: 3, idx: 2 },
-    { colSpan: 4, rowSpan: 3, idx: 3 },
-    { colSpan: 4, rowSpan: 3, idx: 4 },
+    { colSpan: 4, rowSpan: 3, icon: 'file-code', title: 'index.ts', contentIcon: 'code', contentLabel: 'Source File',
+      lines: [
+        { text: 'export function main() {', kind: 'fn' },
+        { text: '  console.log(\'Hello, world!\');', kind: 'string' },
+        { text: '}', kind: 'fn' },
+        { text: '' },
+        { text: 'main();', kind: 'default' },
+      ],
+    },
+    { colSpan: 4, rowSpan: 3, icon: 'terminal', title: 'Terminal', contentIcon: 'terminal-bash', contentLabel: 'zsh — node', contentType: 'terminal',
+      lines: [
+        { text: '$ npx tsx index.ts', kind: 'cmd' },
+        { text: 'Hello, world!', kind: 'success' },
+        { text: '$ █', kind: 'cmd' },
+      ],
+    },
+    { colSpan: 4, rowSpan: 3, icon: 'output', title: 'Output', contentIcon: 'list-flat', contentLabel: 'Build Output', contentType: 'terminal',
+      lines: [
+        { text: '[info] Compilation successful', kind: 'success' },
+        { text: '[info] No errors found', kind: 'success' },
+      ],
+    },
+    { colSpan: 6, rowSpan: 3, icon: 'beaker', title: 'Testing', contentIcon: 'beaker', contentLabel: 'Test Results', contentType: 'terminal',
+      lines: [
+        { text: '✓ main() works (1 ms)', kind: 'success' },
+        { text: '' },
+        { text: 'Tests:  1 passed, 1 total', kind: 'success' },
+      ],
+    },
+    { colSpan: 6, rowSpan: 3, icon: 'search', title: 'Search', contentIcon: 'search', contentLabel: 'Workspace Search', contentType: 'terminal',
+      lines: [
+        { text: '4 results in 2 files', kind: 'info' },
+        { text: '' },
+        { text: 'index.ts:1  export function main() {', kind: 'default' },
+        { text: 'index.ts:5  main();', kind: 'default' },
+        { text: 'test.ts:3   import { main } from \'./index\';', kind: 'default' },
+        { text: 'test.ts:5   main();', kind: 'default' },
+      ],
+    },
   ],
 }
 
@@ -920,7 +1742,7 @@ async function runChatSpawn(chatPanel, text) {
       gridRows.value = slot.row + rowSpan - 1
     }
 
-    const p = makePanel(slot.col, slot.row, span, rowSpan, sessionGroup, spec.idx)
+    const p = makeCustomPanel(slot.col, slot.row, span, rowSpan, sessionGroup, spec)
     newPanels.push(p)
     markOccupied(slot.row, slot.col, span, rowSpan)
   }
@@ -1337,16 +2159,18 @@ async function runChatSpawn(chatPanel, text) {
 .cell-content {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  padding-top: 28px;
+  flex-direction: column;
+  padding: 0;
+  padding-top: 24px;
   min-height: 0;
+  overflow: hidden;
 }
 .mock-content {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   gap: 8px;
   opacity: 0.35;
   text-align: center;
@@ -1358,6 +2182,84 @@ async function runChatSpawn(chatPanel, text) {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
 }
+
+/* ─── Code lines ─────────────────────────────────────────────── */
+.code-lines {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+  font-size: 11px;
+  line-height: 18px;
+  padding: 4px 0;
+}
+.code-line {
+  display: flex;
+  align-items: baseline;
+  padding: 0 10px 0 0;
+  white-space: pre;
+  min-height: 18px;
+}
+.code-line:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.line-num {
+  width: 32px;
+  min-width: 32px;
+  text-align: right;
+  padding-right: 10px;
+  color: var(--vscode-editorLineNumber-foreground, rgba(255,255,255,0.2));
+  user-select: none;
+  flex-shrink: 0;
+}
+.line-text {
+  flex: 1;
+  min-width: 0;
+}
+/* Syntax coloring */
+.line-keyword .line-text { color: #c586c0; }
+.line-fn .line-text { color: #dcdcaa; }
+.line-string .line-text { color: #ce9178; }
+.line-tag .line-text { color: #569cd6; }
+.line-comment .line-text { color: #6a9955; font-style: italic; }
+.line-default .line-text { color: #d4d4d4; }
+.line-dim .line-text { color: rgba(255,255,255,0.3); }
+
+/* Terminal content type */
+.content-terminal .code-lines {
+  padding: 4px 0;
+}
+.content-terminal .line-num {
+  display: none;
+}
+.content-terminal .code-line {
+  padding-left: 12px;
+}
+.content-terminal .line-cmd .line-text { color: #4ec9b0; font-weight: 600; }
+.content-terminal .line-success .line-text { color: #4ec9b0; }
+.content-terminal .line-info .line-text { color: #569cd6; }
+.content-terminal .line-error .line-text { color: #f14c4c; }
+.content-terminal .line-dim .line-text { color: rgba(255,255,255,0.35); }
+.content-terminal .line-default .line-text { color: #d4d4d4; }
+
+/* Preview content type */
+.content-preview .code-lines {
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.content-preview .line-num {
+  display: none;
+}
+.content-preview .code-line {
+  padding-left: 12px;
+  justify-content: center;
+}
+.content-preview .line-default .line-text { color: #d4d4d4; }
+.content-preview .line-info .line-text { color: #569cd6; }
+.content-preview .line-success .line-text { color: #4ec9b0; }
+.content-preview .line-dim .line-text { color: rgba(255,255,255,0.3); }
 
 /* ─── Resize handles ─────────────────────────────────────────── */
 .resize-handle {
