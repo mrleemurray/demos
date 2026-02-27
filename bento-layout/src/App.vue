@@ -148,6 +148,7 @@
           class="cell-tab"
           :class="{ 'is-grab': !dragging }"
           @mousedown="startDrag($event, panel)"
+          @dblclick.stop="openModal(panel)"
         >
           <i :class="'codicon codicon-' + panel.icon"></i>
           <span class="cell-title">{{ panel.title }}</span>
@@ -235,6 +236,65 @@
         :style="dropZoneStyle"
       ></div>
     </div>
+
+    <!-- Modal overlay -->
+    <Transition name="modal">
+      <div v-if="modalPanel" class="modal-overlay" @click.self="closeModal" @keydown.escape.window="closeModal">
+        <div class="modal-cell" :style="{ '--group-accent': groupAccent(modalPanel.group) }">
+          <div class="modal-header">
+            <div class="cell-tab" style="pointer-events:none">
+              <i :class="'codicon codicon-' + modalPanel.icon"></i>
+              <span class="cell-title">{{ modalPanel.title }}</span>
+              <i v-if="modalPanel.attention" class="codicon codicon-warning cell-attention-icon"></i>
+            </div>
+            <button class="icon-btn-sm" title="Close" @click="closeModal">
+              <i class="codicon codicon-close"></i>
+            </button>
+          </div>
+          <div class="cell-content" v-if="!modalPanel.isChat" :class="'content-' + (modalPanel.contentType || 'code')">
+            <div v-if="modalPanel.lines && modalPanel.lines.length" class="code-lines">
+              <div
+                v-for="(line, li) in modalPanel.lines"
+                :key="li"
+                class="code-line"
+                :class="'line-' + (line.kind || 'default')"
+              >
+                <span class="line-num">{{ li + 1 }}</span>
+                <span class="line-text">{{ line.text }}</span>
+              </div>
+            </div>
+            <div v-else class="mock-content">
+              <i :class="'codicon codicon-' + modalPanel.contentIcon" class="content-icon"></i>
+              <span class="content-label">{{ modalPanel.contentLabel }}</span>
+            </div>
+          </div>
+          <div class="chat-content" v-else>
+            <div class="chat-messages">
+              <div
+                v-for="(msg, mi) in modalPanel.messages"
+                :key="mi"
+                class="chat-msg"
+                :class="msg.role"
+              >
+                <i class="codicon" :class="msg.role === 'user' ? 'codicon-account' : 'codicon-sparkle'"></i>
+                <span>{{ msg.text }}</span>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <input
+                class="chat-input"
+                type="text"
+                placeholder="Describe a layout…"
+                @keydown.enter="onChatSubmit($event, modalPanel)"
+              />
+              <button class="chat-send" @click="onChatSendClick(modalPanel)" title="Send">
+                <i class="codicon codicon-send"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Drag ghost -->
     <div
@@ -947,6 +1007,16 @@ const gridRows = computed({
 })
 const selectedPanel = ref(panels.value.length ? panels.value[0].id : null)
 const selectedGroup = ref(null)
+const modalPanel = ref(null)
+
+function openModal(panel) {
+  clearTimeout(dragDelayTimer)
+  dragging.value = null
+  modalPanel.value = panel
+}
+function closeModal() {
+  modalPanel.value = null
+}
 
 // Auto-focus first panel when workspace or repo changes
 watch(panels, (newPanels) => {
@@ -1246,16 +1316,18 @@ function gridCellFromMouse(e) {
   return { col, row }
 }
 
+let dragDelayTimer = null
+
 function startDrag(e, panel) {
   if (e.button !== 0) return
   // Don't start drag from action buttons
   if (e.target.closest('.cell-actions')) return
   selectedPanel.value = panel.id
 
+  // Delay drag setup so double-click can cancel it
   const cellEl = e.target.closest('.bento-cell')
   const cellRect = cellEl.getBoundingClientRect()
-
-  dragging.value = {
+  const snapshot = {
     panel,
     startX: e.clientX,
     startY: e.clientY,
@@ -1265,8 +1337,13 @@ function startDrag(e, panel) {
     height: cellRect.height,
     started: false,
   }
-  dragPos.x = e.clientX
-  dragPos.y = e.clientY
+
+  clearTimeout(dragDelayTimer)
+  dragDelayTimer = setTimeout(() => {
+    dragging.value = snapshot
+    dragPos.x = snapshot.startX
+    dragPos.y = snapshot.startY
+  }, 200)
 }
 
 // ─── Resize logic ────────────────────────────────────────────────
@@ -2648,6 +2725,7 @@ async function runChatSpawn(chatPanel, text) {
   max-width: 70%;
   overflow: hidden;
   transition: opacity 0.15s ease;
+  user-select: none;
 }
 .cell-tab .codicon {
   font-size: 12px;
@@ -2928,6 +3006,80 @@ async function runChatSpawn(chatPanel, text) {
   60%  { opacity: 1; transform: scale(1.02); border-radius: 10px; }
   100% { opacity: 1; transform: scale(1);   border-radius: 8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL OVERLAY — focused cell view
+   ═══════════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+.modal-cell {
+  width: 80%;
+  max-width: 900px;
+  height: 75%;
+  max-height: 700px;
+  background: var(--vscode-editor-background);
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+}
+.modal-header .cell-tab {
+  position: static;
+  opacity: 1;
+  border-radius: 0;
+  max-width: none;
+}
+.modal-cell .cell-content,
+.modal-cell .chat-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Modal transition */
+.modal-enter-active {
+  transition: opacity 0.2s ease;
+}
+.modal-enter-active .modal-cell {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-leave-active {
+  transition: opacity 0.15s ease;
+}
+.modal-leave-active .modal-cell {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.modal-enter-from {
+  opacity: 0;
+}
+.modal-enter-from .modal-cell {
+  opacity: 0;
+  transform: scale(0.92);
+}
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-leave-to .modal-cell {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
 .drag-ghost {
   position: fixed;
   z-index: 100;
