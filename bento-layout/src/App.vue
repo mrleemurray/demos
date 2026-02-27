@@ -1122,19 +1122,30 @@ if (typeof document !== 'undefined') {
 
 // ─── Open chat in a new workspace (same window) ─────────────────
 function openChatInNewWorkspace() {
-  // Pick the next unused session color
-  const usedGroups = new Set(workspaces.value.map(w => w.group))
+  // Pick the next unused session color across all workspaces and panels
+  const usedGroups = new Set()
+  for (const w of workspaces.value) {
+    usedGroups.add(w.group)
+    for (const p of w.panels) {
+      usedGroups.add(p.group)
+    }
+  }
   let sessionGroup = null
   for (const g of groups) {
     if (!usedGroups.has(g.id)) { sessionGroup = g.id; break }
   }
   if (!sessionGroup) {
     // All colors used — cycle
-    sessionGroup = groups[workspaces.value.length % groups.length].id
+    sessionGroup = groups[usedGroups.size % groups.length].id
   }
   const ws = createWorkspace(sessionGroup)
   workspaces.value.push(ws)
   activeWorkspaceId.value = ws.id
+  // Register a session label for the new group
+  const labels = activeRepo.value.sessionLabels
+  if (!labels[sessionGroup]) {
+    labels[sessionGroup] = 'New Session'
+  }
   selectedGroup.value = null
 }
 
