@@ -18,8 +18,7 @@ const variant = ref('original')
       <p>
         The chat input's configuration controls shown inline, always visible. Click any
         of <em>Mode</em>, <em>Model</em> or <em>Effort</em>, then hover across them like a
-        desktop file menu. Hold <em>⌘</em> while selecting to keep a menu open. The
-        <em>+</em> button attaches context and is separate from the menu system.
+        desktop file menu.
       </p>
     </div>
 

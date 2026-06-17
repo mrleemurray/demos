@@ -22,7 +22,7 @@ const cfg = computed(() => props.modelValue)
 
 // --- Option data ----------------------------------------------------------
 const modeOptions = [
-  { value: 'agent', label: 'Agent', icon: 'code', shortcut: '⇧⌘I' },
+  { value: 'agent', label: 'Agent', icon: 'agent', shortcut: '⇧⌘I' },
   { value: 'ask', label: 'Ask', icon: 'question' },
   { value: 'plan', label: 'Plan', icon: 'checklist' },
   { value: 'edit', label: 'Edit', icon: 'edit' },
@@ -170,7 +170,7 @@ onBeforeUnmount(() => {
         role="menuitem"
         @click.stop="clickTopItem('mode')"
       >
-        <i class="codicon menu-top-icon codicon-code"></i>
+        <i class="codicon menu-top-icon codicon-agent"></i>
         <span class="menu-top-value">{{ modeLabel }}</span>
       </button>
 
@@ -193,6 +193,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Model -->
+    <div class="menu-sep" aria-hidden="true"></div>
+
     <div class="menu" @mouseenter="hoverTopItem('model')">
       <button
         class="menu-top"
@@ -329,6 +331,14 @@ onBeforeUnmount(() => {
 .menu {
   position: relative;
   display: flex;
+}
+
+.menu-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--vscode-input-border, #3c3c3c);
+  opacity: 0.8;
 }
 
 .menu-top {

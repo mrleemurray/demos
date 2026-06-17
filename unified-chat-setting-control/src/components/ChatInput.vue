@@ -87,7 +87,7 @@ const handleKeyDown = (e) => {
           :disabled="isEmpty"
           title="Send"
         >
-          <i class="codicon codicon-send"></i>
+          <i class="codicon codicon-newline"></i>
         </button>
       </div>
     </div>
@@ -209,7 +209,7 @@ const handleKeyDown = (e) => {
   height: 26px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   background: var(--vscode-button-background, #0e639c);
   color: var(--vscode-button-foreground, #ffffff);
   cursor: pointer;
