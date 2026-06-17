@@ -9,6 +9,7 @@ on:
       - 'bento-layout/**'
       - 'chat-input-prototype/**'
       - 'gutter-tab/**'
+      - 'unified-chat-setting-control/**'
       - 'theme-2026-blur-test/**'
       - 'index.html'
       - 'favicon.svg'
@@ -68,6 +69,15 @@ jobs:
         working-directory: ./gutter-tab
         run: npm run build
       
+      # Build unified-chat-setting-control
+      - name: Install dependencies (unified-chat-setting-control)
+        working-directory: ./unified-chat-setting-control
+        run: npm install
+      
+      - name: Build unified-chat-setting-control
+        working-directory: ./unified-chat-setting-control
+        run: npm run build
+      
       # Prepare deployment directory
       - name: Create deployment directory
         run: |
@@ -76,6 +86,7 @@ jobs:
           cp -r bento-layout/dist deploy/bento-layout
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
+          cp -r unified-chat-setting-control/dist deploy/unified-chat-setting-control
           cp -r theme-2026-blur-test deploy/theme-2026-blur-test
           cp index.html deploy/index.html
           cp favicon.svg deploy/favicon.svg
