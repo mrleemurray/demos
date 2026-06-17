@@ -429,8 +429,8 @@ onBeforeUnmount(() => {
 
 .row:hover,
 .row:focus-visible {
-  background: var(--vscode-list-activeSelectionBackground, #04395e);
-  color: var(--vscode-list-activeSelectionForeground, #ffffff);
+  background: var(--vscode-list-hoverBackground, #ffffff14);
+  color: var(--vscode-foreground, #ffffff);
   outline: none;
 }
 
