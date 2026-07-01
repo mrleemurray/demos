@@ -14,7 +14,7 @@
         class="fish-icon"
         :class="fishIconClass"
         :style="fishIconStyle"
-      ><span class="fish-svg" v-html="currentFishSvg" /></span>
+      ><span class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" /></span>
 
       <!-- Hunger indicator pip -->
       <!--v-if removed: no pip on any state-->
@@ -26,6 +26,7 @@
       :fish-avatars="fishAvatars"
       :fish-colors="fishColors"
       :selected-id="selectedAvatarId"
+      :palette="FISH_PALETTE"
       :position="pickerPosition"
       @select="handleAvatarSelect"
       @color-change="handleColorChange"
@@ -84,6 +85,7 @@ const fishAvatars = [
 ];
 
 // Per-fish user-customisable colors — default to foreground
+const FISH_PALETTE = ['#cccccc', '#ff8c42', '#4da6ff', '#4ec9b0', '#b388ff'];
 const fishColors = ref(Object.fromEntries(fishAvatars.map(a => [a.id, '#cccccc'])));
 const currentFishColor = computed(() => fishColors.value[selectedAvatarId.value] ?? '#cccccc');
 
@@ -161,10 +163,9 @@ function triggerSelectionAnimation() {
   selectionTimeout = setTimeout(() => { isSelecting.value = false; }, 750);
 }
 
-// Priority: selecting > wiggling > hovering
+// Priority: selecting > hovering (wiggle now lives on the button element)
 const fishIconClass = computed(() => {
   if (isSelecting.value) return 'selection-burst';
-  if (isWiggling.value)  return 'wiggle';
   if (isHovered.value) {
     if (fishState.value === 'happy') return `hover-happy-${happyAnimPhase.value}`;
     return `hover-${fishState.value}`;
@@ -287,10 +288,6 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   outline-offset: 1px;
 }
 
-.aquarium-button:active {
-  transform: scale(0.9);
-}
-
 /* ── Fish icon ──────────────────────────────────────────────────── */
 .fish-icon {
   display: flex;
@@ -312,17 +309,21 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   height: 100%;
 }
 
-/* ── Wiggle (left-click feedback) ──────────────────────────────── */
-.wiggle {
-  animation: wiggle 0.7s ease;
+/* Poke (left-click) — on .fish-svg so it composes with the outer bob-y transform */
+.fish-svg.poke {
+  animation: poke 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
-@keyframes wiggle {
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(-8deg); }
-  50%  { transform: rotate(6deg); }
-  75%  { transform: rotate(-4deg); }
-  100% { transform: rotate(0deg); }
+@keyframes poke {
+  0%   { transform: scale(1);    }
+  30%  { transform: scale(0.78); }
+  100% { transform: scale(1);    }
+}
+
+@keyframes poke {
+  0%   { transform: scale(1);    }
+  30%  { transform: scale(0.85); }
+  100% { transform: scale(1);    }
 }
 
 /* ── Selection burst (avatar pick) ──────────────────────────────── */
@@ -332,9 +333,9 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
 
 @keyframes selection-burst {
   0%   { transform: scale(1)    rotate(0deg);  }
-  25%  { transform: scale(1.25) rotate(-12deg); }
-  55%  { transform: scale(1.15) rotate(8deg);  }
-  75%  { transform: scale(1.05) rotate(-3deg); }
+  25%  { transform: scale(1.12) rotate(-8deg); }
+  55%  { transform: scale(1.08) rotate(5deg);  }
+  75%  { transform: scale(1.03) rotate(-2deg); }
   100% { transform: scale(1)    rotate(0deg);  }
 }
 
@@ -357,12 +358,12 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   to   { transform: translateY(-4px); }
 }
 @keyframes bob-rock-happy {
-  from { transform: rotate(-7deg); }
-  to   { transform: rotate(7deg); }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(14deg); }
 }
 
 @keyframes swim-circle {
-  0%   { transform: translateX(0px)   perspective(120px) rotateY(0deg)   scale(1.1);  }
+  0%   { transform: translateX(0px)   perspective(120px) rotateY(0deg)   scale(1);    }
   12%  { transform: translateX(-6px)  perspective(120px) rotateY(45deg)  scale(1.0);  }
   25%  { transform: translateX(-10px) perspective(120px) rotateY(90deg)  scale(0.85); }
   37%  { transform: translateX(-6px)  perspective(120px) rotateY(135deg) scale(0.75); }
@@ -370,7 +371,7 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   62%  { transform: translateX(6px)   perspective(120px) rotateY(225deg) scale(0.75); }
   75%  { transform: translateX(10px)  perspective(120px) rotateY(270deg) scale(0.85); }
   87%  { transform: translateX(6px)   perspective(120px) rotateY(315deg) scale(1.0);  }
-  100% { transform: translateX(0px)   perspective(120px) rotateY(360deg) scale(1.1);  }
+  100% { transform: translateX(0px)   perspective(120px) rotateY(360deg) scale(1);    }
 }
 
 /* Neutral: gentle lift, then slow bob */
@@ -393,8 +394,8 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   to   { transform: translateY(-5px); }
 }
 @keyframes bob-rock-neutral {
-  from { transform: rotate(-5deg); }
-  to   { transform: rotate(5deg); }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(10deg); }
 }
 
 /* Sad: sluggish droop, then heavy bob */
@@ -408,9 +409,8 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
 }
 
 @keyframes hover-sad {
-  0%   { transform: rotate(0deg) translateY(0);   }
-  50%  { transform: rotate(6deg) translateY(2px); }
-  100% { transform: rotate(4deg) translateY(2px); }
+  0%   { transform: translateY(0);   }
+  100% { transform: translateY(2px); }
 }
 @keyframes bob-y-sad {
   from { transform: translateY(2px); }
@@ -440,8 +440,8 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   to   { transform: perspective(120px) rotateX(180deg) translateY(-4px); }
 }
 @keyframes bob-rock-very-sad {
-  from { transform: rotate(-7deg); }
-  to   { transform: rotate(7deg); }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(14deg); }
 }
 
 /* ── Hunger pip ─────────────────────────────────────────────────── */

@@ -20,16 +20,19 @@
           :style="{ color: fishColors[avatar.id] }"
           @click="emit('select', avatar.id)"
         >
-          <!-- Neutral preview rendered inline -->
           <span class="picker-fish" v-html="avatar.neutral" />
-          <!-- Color swatch — opens native color picker without selecting the fish -->
-          <label class="color-swatch" :style="{ background: fishColors[avatar.id] }" @click.stop>
-            <input
-              type="color"
-              :value="fishColors[avatar.id]"
-              @input="emit('color-change', avatar.id, $event.target.value)"
+          <!-- Preset color swatches -->
+          <div class="color-swatches" @click.stop>
+            <button
+              v-for="color in palette"
+              :key="color"
+              class="color-swatch"
+              :class="{ active: fishColors[avatar.id] === color }"
+              :style="{ background: color }"
+              :title="color"
+              @click="emit('color-change', avatar.id, color)"
             />
-          </label>
+          </div>
           <i v-if="avatar.id === selectedId" class="codicon codicon-check picker-check" />
         </button>
       </div>
@@ -47,6 +50,7 @@ const props = defineProps({
   fishColors:  { type: Object, required: true },
   selectedId:  { type: String, required: true },
   position:    { type: Object, required: true },
+  palette:     { type: Array,  required: true },
 });
 
 const emit = defineEmits(['select', 'color-change', 'close']);
@@ -148,25 +152,28 @@ const safeY = computed(() =>
 }
 
 /* ── Color swatch ──────────────────────────────────────────── */
-.color-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-  overflow: hidden;
+.color-swatches {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
-.color-swatch input[type="color"] {
-  position: absolute;
-  inset: -4px;
-  opacity: 0;
+.color-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
   cursor: pointer;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
-  border: none;
+  flex-shrink: 0;
   padding: 0;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.2);
+}
+
+.color-swatch.active {
+  border-color: rgba(255, 255, 255, 0.7);
 }
 </style>
