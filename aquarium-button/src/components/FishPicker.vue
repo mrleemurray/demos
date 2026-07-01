@@ -56,7 +56,7 @@ const props = defineProps({
 const emit = defineEmits(['select', 'color-change', 'close']);
 
 // Keep menu within viewport
-const MENU_WIDTH  = 48;
+const MENU_WIDTH  = 160;
 const MENU_HEIGHT = props.fishAvatars.length * 48 + 36; // approx
 
 const safeX = computed(() =>
@@ -146,7 +146,7 @@ const safeY = computed(() =>
 
 .picker-check {
   font-size: 14px;
-  color: #4ec9b0;
+  color: #888;
   margin-left: auto;
   flex-shrink: 0;
 }

@@ -3,7 +3,6 @@
     <button
       class="aquarium-button"
       :class="[`state-${fishState}`, { active: isOpen }]"
-      :title="buttonTitle"
       @click.left="handleLeftClick"
       @contextmenu.prevent="handleRightClick"
       @mouseenter="handleMouseEnter"
@@ -14,7 +13,11 @@
         class="fish-icon"
         :class="fishIconClass"
         :style="fishIconStyle"
-      ><span class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" /></span>
+      >
+        <Transition name="fish-swap">
+          <span :key="selectedAvatarId" class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" />
+        </Transition>
+      </span>
 
       <!-- Hunger indicator pip -->
       <!--v-if removed: no pip on any state-->
@@ -214,14 +217,14 @@ const showPicker = ref(false);
 const pickerPosition = ref({ x: 0, y: 0 });
 
 function handleRightClick(event) {
-  pickerPosition.value = { x: event.clientX, y: event.clientY };
+  const rect = event.currentTarget.getBoundingClientRect();
+  pickerPosition.value = { x: rect.left, y: rect.bottom + 6 };
   showPicker.value = true;
 }
 
 function handleAvatarSelect(id) {
   selectedAvatarId.value = id;
   showPicker.value = false;
-  triggerSelectionAnimation();
 }
 
 // Close picker on outside click
@@ -267,6 +270,7 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   align-items: center;
   justify-content: center;
   padding: 0;
+  overflow: hidden;
   transition:
     background 0.12s ease,
     transform 0.1s ease;
@@ -293,6 +297,7 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   width: 22px;
   height: 22px;
 }
@@ -307,6 +312,31 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   display: flex;
   width: 100%;
   height: 100%;
+}
+
+/* ── Fish swap transition (avatar change) ───────────────────────── */
+.fish-swap-enter-active,
+.fish-swap-leave-active {
+  position: absolute;
+  inset: 0;
+}
+
+.fish-swap-enter-active {
+  animation: swim-in 0.5s ease;
+}
+
+.fish-swap-leave-active {
+  animation: swim-away 0.4s ease forwards;
+}
+
+@keyframes swim-away {
+  0%   { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(-28px); opacity: 0; }
+}
+
+@keyframes swim-in {
+  0%   { transform: translateX(28px); opacity: 0; }
+  100% { transform: translateX(0);    opacity: 1; }
 }
 
 /* Poke (left-click) — on .fish-svg so it composes with the outer bob-y transform */
