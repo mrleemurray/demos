@@ -498,11 +498,11 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
 
 @keyframes flip-very-sad {
   0%   { transform: translateY(0)    perspective(120px) rotateX(0deg);   }
-  100% { transform: translateY(-6px) perspective(120px) rotateX(180deg); }
+  100% { transform: translateY(-3px) perspective(120px) rotateX(180deg); }
 }
 @keyframes bob-y-very-sad {
-  from { transform: translateY(-6px)  perspective(120px) rotateX(180deg); }
-  to   { transform: translateY(-10px) perspective(120px) rotateX(180deg); }
+  from { transform: translateY(-3px) perspective(120px) rotateX(180deg); }
+  to   { transform: translateY(-6px) perspective(120px) rotateX(180deg); }
 }
 @keyframes bob-rock-very-sad {
   from { transform: rotate(0deg); }
