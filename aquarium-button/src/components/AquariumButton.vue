@@ -14,7 +14,7 @@
         :class="fishIconClass"
         :style="fishIconStyle"
       >
-        <Transition name="fish-swap">
+        <Transition name="icon-fade">
           <i v-if="isOpen" key="close" class="codicon codicon-close close-icon" />
           <span v-else :key="selectedAvatarId" class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" />
         </Transition>
@@ -294,7 +294,7 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   position: relative;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -348,38 +348,30 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
 
 /* Close icon shown when aquarium is open */
 .close-icon {
+  display: flex !important;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: currentColor;
+}
+
+/* ── Icon fade (fish ↔ close, fish ↔ fish) ───────────────────────── */
+.icon-fade-enter-active,
+.icon-fade-leave-active {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  color: currentColor;
+  transition: opacity 0.2s ease;
 }
 
-/* ── Fish swap transition (avatar change) ───────────────────────── */
-.fish-swap-enter-active,
-.fish-swap-leave-active {
-  position: absolute;
-  inset: 0;
-}
-
-.fish-swap-enter-active {
-  animation: swim-in 0.5s ease;
-}
-
-.fish-swap-leave-active {
-  animation: swim-away 0.4s ease forwards;
-}
-
-@keyframes swim-away {
-  0%   { transform: translateX(0);     opacity: 1; }
-  100% { transform: translateX(-28px); opacity: 0; }
-}
-
-@keyframes swim-in {
-  0%   { transform: translateX(28px); opacity: 0; }
-  100% { transform: translateX(0);    opacity: 1; }
+.icon-fade-enter-from,
+.icon-fade-leave-to {
+  opacity: 0;
 }
 
 /* Poke (left-click) — on .fish-svg so it composes with the outer bob-y transform */
