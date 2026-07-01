@@ -15,7 +15,8 @@
         :style="fishIconStyle"
       >
         <Transition name="fish-swap">
-          <span :key="selectedAvatarId" class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" />
+          <i v-if="isOpen" key="close" class="codicon codicon-close close-icon" />
+          <span v-else :key="selectedAvatarId" class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" />
         </Transition>
       </span>
 
@@ -171,8 +172,9 @@ function triggerSelectionAnimation() {
   selectionTimeout = setTimeout(() => { isSelecting.value = false; }, 750);
 }
 
-// Priority: selecting > hovering (wiggle now lives on the button element)
+// Priority: selecting > hovering (skip hover when aquarium is open)
 const fishIconClass = computed(() => {
+  if (isOpen) return '';
   if (isSelecting.value) return 'selection-burst';
   if (isHovered.value) {
     if (fishState.value === 'happy') return `hover-happy-${happyAnimPhase.value}`;
@@ -342,6 +344,17 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   display: flex;
   width: 100%;
   height: 100%;
+}
+
+/* Close icon shown when aquarium is open */
+.close-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: currentColor;
 }
 
 /* ── Fish swap transition (avatar change) ───────────────────────── */
