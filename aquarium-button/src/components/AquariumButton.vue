@@ -14,7 +14,7 @@
         :class="fishIconClass"
         :style="fishIconStyle"
       >
-        <Transition name="icon-fade">
+        <Transition :name="transitionName">
           <i v-if="isOpen" key="close" class="codicon codicon-close close-icon" />
           <span v-else :key="selectedAvatarId" class="fish-svg" :class="{ poke: isWiggling }" v-html="currentFishSvg" />
         </Transition>
@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import FishPicker from './FishPicker.vue';
 
 // ── Real fish SVG imports (?raw so currentColor flows from .aquarium-button) ──
@@ -104,6 +104,11 @@ function handleColorChange(id, color) {
 
 // ── Tamagotchi state ───────────────────────────────────────────────
 const selectedAvatarId = ref('fish1');
+
+// fish-swap for avatar changes, icon-fade for open/close
+const transitionName = ref('fish-swap');
+watch(() => props.isOpen,  () => { transitionName.value = 'icon-fade';  });
+watch(selectedAvatarId,    () => { transitionName.value = 'fish-swap'; });
 const feedingLevel = ref(80);
 
 // 4-band state derived from feeding level
@@ -355,10 +360,30 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
   justify-content: center;
   font-size: 14px;
   line-height: 1;
-  color: currentColor;
+  color: #cccccc;
 }
 
-/* ── Icon fade (fish ↔ close, fish ↔ fish) ───────────────────────── */
+/* ── Fish swap (avatar change) ──────────────────────────────────── */
+.fish-swap-enter-active,
+.fish-swap-leave-active {
+  position: absolute;
+  inset: 0;
+}
+
+.fish-swap-enter-active { animation: swim-in   0.4s ease; }
+.fish-swap-leave-active { animation: swim-away 0.35s ease forwards; }
+
+@keyframes swim-away {
+  0%   { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(-28px); opacity: 0; }
+}
+
+@keyframes swim-in {
+  0%   { transform: translateX(28px); opacity: 0; }
+  100% { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Icon fade (fish ↔ close) ───────────────────────────────────── */
 .icon-fade-enter-active,
 .icon-fade-leave-active {
   position: absolute;
