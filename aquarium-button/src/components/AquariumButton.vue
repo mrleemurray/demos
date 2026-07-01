@@ -23,6 +23,11 @@
       <!--v-if removed: no pip on any state-->
     </button>
 
+    <!-- Streak info — fades in on hover -->
+    <div class="streak-label" :class="{ visible: isHovered && !isOpen }">
+      {{ streakMessage }}
+    </div>
+
     <!-- Fish picker context menu -->
     <FishPicker
       v-if="showPicker"
@@ -204,7 +209,12 @@ const buttonTitle = computed(() => {
   return `Aquarium — ${stateLabel} (right-click to change fish)`;
 });
 
-// Apply fish color as CSS custom property on the button
+const streakMessage = computed(() => ({
+  happy:      '5 day streak!',
+  neutral:    '3 day streak',
+  sad:        "It's been a while...",
+  'very-sad': "It's been weeks...",
+}[fishState.value]));
 
 // ── Click handlers ─────────────────────────────────────────────────
 function handleLeftClick() {
@@ -256,6 +266,26 @@ defineExpose({ feed, setLevel, feedingLevel, fishState, currentFishSvg, fishColo
 <style scoped>
 .aquarium-button-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Streak label ───────────────────────────────────────────────── */
+.streak-label {
+  position: absolute;
+  left: calc(100% + 8px);
+  white-space: nowrap;
+  font-size: 12px;
+  color: #cccccc;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.streak-label.visible {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .aquarium-button {
