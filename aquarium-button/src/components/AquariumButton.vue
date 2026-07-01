@@ -174,7 +174,7 @@ function triggerSelectionAnimation() {
 
 // Priority: selecting > hovering (skip hover when aquarium is open)
 const fishIconClass = computed(() => {
-  if (isOpen) return '';
+  if (props.isOpen) return '';
   if (isSelecting.value) return 'selection-burst';
   if (isHovered.value) {
     if (fishState.value === 'happy') return `hover-happy-${happyAnimPhase.value}`;
