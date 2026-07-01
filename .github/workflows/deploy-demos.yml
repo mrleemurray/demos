@@ -11,6 +11,7 @@ on:
       - 'gutter-tab/**'
       - 'unified-chat-setting-control/**'
       - 'theme-2026-blur-test/**'
+      - 'aquarium-button/**'
       - 'index.html'
       - 'favicon.svg'
       - '.github/workflows/deploy-demos.yml'
@@ -77,6 +78,15 @@ jobs:
       - name: Build unified-chat-setting-control
         working-directory: ./unified-chat-setting-control
         run: npm run build
+
+      # Build aquarium-button
+      - name: Install dependencies (aquarium-button)
+        working-directory: ./aquarium-button
+        run: npm install
+      
+      - name: Build aquarium-button
+        working-directory: ./aquarium-button
+        run: npm run build
       
       # Prepare deployment directory
       - name: Create deployment directory
@@ -87,6 +97,7 @@ jobs:
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
           cp -r gutter-tab/dist deploy/gutter-tab
           cp -r unified-chat-setting-control/dist deploy/unified-chat-setting-control
+          cp -r aquarium-button/dist deploy/aquarium-button
           cp -r theme-2026-blur-test deploy/theme-2026-blur-test
           cp index.html deploy/index.html
           cp favicon.svg deploy/favicon.svg
