@@ -8,6 +8,7 @@ Collection of interactive prototypes and explorations.
 
 - [Chat Input Prototype](https://demos.mrleemurray.com/chat-input-prototype/) - VSCode-inspired chat interface
 - [Gutter Tab](https://demos.mrleemurray.com/gutter-tab/) - Gutter tab behaviors exploration
+- [Provider Info](https://demos.mrleemurray.com/provider-info/) - Rotating provider quality labels
 
 ## Projects
 
@@ -31,6 +32,18 @@ Explorations for gutter tab behaviors and interactions.
 
 ```bash
 cd gutter-tab
+npm install
+npm run dev
+```
+
+### provider-info
+
+AI provider icons that reveal a rotating ring of descriptive qualities on hover, focus, or activation.
+
+**Tech:** Vue 3, Vite, VSCode Codicons
+
+```bash
+cd provider-info
 npm install
 npm run dev
 ```
