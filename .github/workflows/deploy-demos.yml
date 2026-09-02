@@ -92,7 +92,7 @@ jobs:
       # Build provider-info
       - name: Install dependencies (provider-info)
         working-directory: ./provider-info
-        run: npm install
+        run: npm install --registry=https://registry.npmjs.org/
 
       - name: Build provider-info
         working-directory: ./provider-info
