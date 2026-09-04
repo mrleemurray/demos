@@ -1,6 +1,10 @@
 function phaseDescription(snapshot) {
   if (snapshot.phase === 'playing') {
-    return `Hat Stacker in progress. Score ${snapshot.score}. ${snapshot.stack.length} hats stacked.`;
+    const nextSpawnDescription = snapshot.fallingHat?.passedCatchLine
+      || !Number.isFinite(snapshot.nextSpawnX)
+      ? ''
+      : ` Next hat near the ${snapshot.nextSpawnX < 320 ? 'left' : snapshot.nextSpawnX > 640 ? 'right' : 'center'}.`;
+    return `Hat Stacker in progress. Score ${snapshot.score}. ${snapshot.stack.length} hats stacked.${nextSpawnDescription}`;
   }
   if (snapshot.phase === 'paused') {
     return `Hat Stacker paused. Score ${snapshot.score}. ${snapshot.stack.length} hats stacked.`;

@@ -118,6 +118,7 @@ export class GameRenderer {
     this._drawStack(context, snapshot);
     this._drawParticles(context, delta);
     context.restore();
+    this._drawSpawnIndicator(context, snapshot, timestamp);
     this._drawDanger(context, snapshot.balance.ratio);
   }
 
@@ -167,6 +168,7 @@ export class GameRenderer {
         star.size,
       );
     }
+
     context.restore();
 
     context.strokeStyle = 'rgba(48, 112, 139, 0.12)';
@@ -185,6 +187,43 @@ export class GameRenderer {
         this._drawHat(context, hatAsset, WORLD.width / 2, 210 + bob, -0.05);
       }
     }
+  }
+
+  _drawSpawnIndicator(context, snapshot, timestamp) {
+    if (
+      snapshot.phase !== 'playing'
+      || snapshot.fallingHat?.passedCatchLine
+      || !Number.isFinite(snapshot.nextSpawnX)
+    ) {
+      return;
+    }
+
+    const zoneWidth = WORLD.width / 5;
+    const zoneIndex = Math.min(4, Math.floor(snapshot.nextSpawnX / zoneWidth));
+    const roughWorldX = (zoneIndex + 0.5) * zoneWidth;
+    const progress = Math.max(0, Math.min(1, snapshot.nextSpawnProgress ?? 0));
+    const accuracyProgress = progress * progress * (3 - 2 * progress);
+    const indicatorWorldX = roughWorldX
+      + (snapshot.nextSpawnX - roughWorldX) * accuracyProgress;
+    const wideBandWidth = Math.max(80, zoneWidth * this.cameraZoom * 0.75);
+    const bandWidth = wideBandWidth + (32 - wideBandWidth) * accuracyProgress;
+    const screenX = Math.max(
+      bandWidth / 2,
+      Math.min(
+        WORLD.width - bandWidth / 2,
+        WORLD.width / 2 + (indicatorWorldX - WORLD.width / 2) * this.cameraZoom,
+      ),
+    );
+    const pulse = this.reducedMotion ? 0 : Math.sin(timestamp * 0.008) * 2;
+
+    context.save();
+    context.translate(screenX, 9 + pulse);
+    context.globalAlpha = this.reducedMotion
+      ? 0.5
+      : 0.43 + Math.sin(timestamp * 0.008) * 0.1;
+    context.fillStyle = '#75beff';
+    context.fillRect(-bandWidth / 2, -2, bandWidth, 3);
+    context.restore();
   }
 
   _drawGround(context) {

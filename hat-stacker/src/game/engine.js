@@ -88,6 +88,8 @@ export class HatStackerEngine {
     this.score = 0;
     this.elapsed = 0;
     this.spawnTimer = 0;
+    this.spawnDelay = 0;
+    this.nextSpawnProgressBase = 0;
     this.toppleExposure = 0;
     this.celebrationTimer = 0;
     this.inputDirection = 0;
@@ -106,7 +108,7 @@ export class HatStackerEngine {
     this.fallingHat = undefined;
     this.debris = [];
     this._hatBag = [];
-    this.nextHat = this._takeHatFromBag();
+    this._prepareNextDrop();
     this._emit({ type: 'phase', phase: this.phase });
   }
 
@@ -114,6 +116,7 @@ export class HatStackerEngine {
     this.reset();
     this.phase = 'playing';
     this.spawnTimer = 0.55;
+    this.spawnDelay = this.spawnTimer;
     this._emit({ type: 'phase', phase: this.phase });
   }
 
@@ -171,18 +174,21 @@ export class HatStackerEngine {
       throw new Error('Cannot spawn a second hat while one is already falling.');
     }
 
+    const usesPreparedDrop = typeId === undefined;
     const type = typeId ? this.typeById.get(typeId) : this.nextHat;
     if (!type) {
       throw new Error(`Unknown hat type: ${typeId}`);
     }
-    if (!typeId) {
-      this.nextHat = this._takeHatFromBag();
-    }
     const metrics = this._metricsFor(type.id);
-    const defaultX = this._getFairSpawnX(metrics.width);
+    const defaultX = usesPreparedDrop
+      ? this.nextSpawnX ?? this._getFairSpawnX(metrics.width)
+      : this._getFairSpawnX(metrics.width);
     const cameraZoom = getCameraZoom(this.stack.length);
     const visibleTopY = WORLD.groundY - WORLD.groundY / cameraZoom;
     const defaultBottomY = visibleTopY - Math.max(12, metrics.height * 0.4);
+    if (usesPreparedDrop) {
+      this._prepareNextDrop();
+    }
 
     this.fallingHat = {
       type,
@@ -190,6 +196,7 @@ export class HatStackerEngine {
       originX: x ?? defaultX,
       bottomY: bottomY ?? defaultBottomY,
       previousBottomY: bottomY ?? defaultBottomY,
+      spawnBottomY: bottomY ?? defaultBottomY,
       verticalVelocity: verticalVelocity ?? 68 + this.stack.length * 3.1,
       gravity: gravity ?? Math.min(370, 245 + this.stack.length * 6.9),
       maximumFallSpeed: maximumFallSpeed ?? Math.min(490, 342 + this.stack.length * 9.7),
@@ -340,6 +347,8 @@ export class HatStackerEngine {
         ratio: balanceRatio,
       },
       nextHat: this.nextHat,
+      nextSpawnX: this.nextSpawnX,
+      nextSpawnProgress: this._getNextSpawnProgress(),
       difficulty: this._getDifficultyLabel(),
     };
   }
@@ -459,6 +468,8 @@ export class HatStackerEngine {
     this.celebrationTimer = perfect ? 0.72 : 0.2;
     this.fallingHat = undefined;
     this.spawnTimer = Math.max(0.3, 0.72 - this.stack.length * 0.024);
+    this.spawnDelay = this.spawnTimer;
+    this.nextSpawnProgressBase = 0.65;
     this._emit({
       type: 'catch',
       hat: hat.type,
@@ -593,6 +604,35 @@ export class HatStackerEngine {
       margin,
       WORLD.width - margin,
     );
+  }
+
+  _prepareNextDrop() {
+    this.nextHat = this._takeHatFromBag();
+    this.nextSpawnX = this._getFairSpawnX(this._metricsFor(this.nextHat.id).width);
+    this.nextSpawnProgressBase = 0;
+  }
+
+  _getNextSpawnProgress() {
+    if (!Number.isFinite(this.nextSpawnX)) {
+      return 0;
+    }
+    if (this.fallingHat) {
+      const top = this.getStackTop();
+      const fallDistance = top.y - this.fallingHat.spawnBottomY;
+      if (fallDistance <= 0) {
+        return 0;
+      }
+      return clamp(
+        ((this.fallingHat.bottomY - this.fallingHat.spawnBottomY) / fallDistance) * 0.65,
+        0,
+        0.65,
+      );
+    }
+    if (this.spawnDelay <= 0) {
+      return 1;
+    }
+    const timerProgress = 1 - clamp(this.spawnTimer / this.spawnDelay, 0, 1);
+    return this.nextSpawnProgressBase + (1 - this.nextSpawnProgressBase) * timerProgress;
   }
 
   _takeHatFromBag() {

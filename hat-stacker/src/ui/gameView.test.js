@@ -73,6 +73,27 @@ suite('GameView', () => {
     expect(view.rightButton.disabled).toBe(false);
   });
 
+  test('describes the next spawn region while waiting for a drop', () => {
+    const view = new GameView(root, {
+      onPrimary: vi.fn(),
+    });
+
+    view.update(snapshot({
+      phase: 'playing',
+      nextSpawnX: 760,
+      fallingHat: {},
+    }));
+
+    expect(view.canvas.getAttribute('aria-label')).toContain('Next hat near the right.');
+
+    view.update(snapshot({
+      phase: 'playing',
+      nextSpawnX: 760,
+      fallingHat: { passedCatchLine: true },
+    }));
+    expect(view.canvas.getAttribute('aria-label')).not.toContain('Next hat');
+  });
+
   test('presents the correct game-over reason and restart action', () => {
     const view = new GameView(root, {
       onPrimary: vi.fn(),

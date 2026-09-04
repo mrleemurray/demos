@@ -56,7 +56,41 @@ suite('HatStackerEngine', () => {
     engine.start();
 
     expect(engine.phase).toBe('playing');
+    expect(engine.nextSpawnX).toBeTypeOf('number');
+    expect(engine.getSnapshot().nextSpawnProgress).toBe(0);
     expect(events.at(-1)).toEqual({ type: 'phase', phase: 'playing' });
+  });
+
+  test('spawns the next hat from its previewed location', () => {
+    const { engine } = createEngine();
+    engine.start();
+    const previewedX = engine.getSnapshot().nextSpawnX;
+
+    for (let index = 0; index < 12; index += 1) {
+      engine.step(0.05);
+    }
+
+    expect(engine.fallingHat.originX).toBe(previewedX);
+    expect(engine.getSnapshot().nextSpawnX).toBeTypeOf('number');
+    expect(engine.getSnapshot().nextSpawnProgress).toBe(0);
+  });
+
+  test('refines the next-spawn preview as a falling hat approaches the stack', () => {
+    const { engine } = createEngine();
+    engine.start();
+    for (let index = 0; index < 12; index += 1) {
+      engine.step(0.05);
+    }
+
+    const initialProgress = engine.getSnapshot().nextSpawnProgress;
+    const top = engine.getStackTop();
+    engine.fallingHat.bottomY = (
+      engine.fallingHat.spawnBottomY
+      + top.y
+    ) / 2;
+
+    expect(initialProgress).toBe(0);
+    expect(engine.getSnapshot().nextSpawnProgress).toBeCloseTo(0.325);
   });
 
   test('catches a centered falling hat and adds it to the stack', () => {
@@ -69,6 +103,7 @@ suite('HatStackerEngine', () => {
     expect(snapshot.phase).toBe('playing');
     expect(snapshot.stack).toHaveLength(1);
     expect(snapshot.fallingHat).toBeUndefined();
+    expect(snapshot.nextSpawnX).toBeTypeOf('number');
     expect(snapshot.score).toBe(1);
     expect(events.find(event => event.type === 'catch')).toMatchObject({
       perfect: true,
