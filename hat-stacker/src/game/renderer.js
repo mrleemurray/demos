@@ -345,7 +345,7 @@ export class GameRenderer {
         asset,
         item.localX,
         item.localBottomY,
-        item.restingRotation,
+        item.localRotation,
       );
     }
     context.restore();

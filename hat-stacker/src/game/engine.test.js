@@ -32,6 +32,17 @@ function dropAtStackTop(engine, xOffset = 0) {
   engine.step(0.03);
 }
 
+function setStackSize(engine, count) {
+  const type = engine.typeById.get('cowboy-hat');
+  const metrics = engine.metrics.get('cowboy-hat');
+  engine.stack = Array.from({ length: count }, () => ({
+    type,
+    metrics,
+    offset: 0,
+    restingRotation: 0,
+  }));
+}
+
 suite('HatStackerEngine', () => {
   test('starts in a ready state and begins a run on demand', () => {
     const { engine, events } = createEngine();
@@ -116,6 +127,43 @@ suite('HatStackerEngine', () => {
     expect(engine.stack).toHaveLength(0);
   });
 
+  test('gives a sixteen-hat stack time to recover from a brief overbalance', () => {
+    const { engine } = createEngine();
+    engine.start();
+    setStackSize(engine, 16);
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.balance.limit).toBeGreaterThanOrEqual(0.26);
+    engine.balance.angle = snapshot.balance.limit * 1.8;
+
+    for (let index = 0; index < 3; index += 1) {
+      engine.step(0.05);
+    }
+    expect(engine.phase).toBe('playing');
+
+    engine.step(0.05);
+    expect(engine.getSnapshot()).toMatchObject({
+      phase: 'gameover',
+      gameOverReason: 'topple',
+    });
+  });
+
+  test('flexes the upper hats more than the base as a tall stack wobbles', () => {
+    const { engine } = createEngine();
+    engine.start();
+    setStackSize(engine, 16);
+    engine.elapsed = 0.5;
+    engine.balance.angularVelocity = 0.8;
+
+    const layout = engine.getStackLayout();
+    const baseHat = layout.items[0];
+    const topHat = layout.items.at(-1);
+
+    expect(Math.abs(topHat.localX)).toBeGreaterThan(Math.abs(baseHat.localX));
+    expect(Math.abs(topHat.localRotation)).toBeGreaterThan(Math.abs(baseHat.localRotation));
+    expect(layout.topLocalX).toBe(topHat.localX);
+  });
+
   test('drops every stacked hat when a missed hat reaches the ground', () => {
     const { engine, events } = createEngine();
     engine.start();
@@ -179,6 +227,8 @@ suite('HatStackerEngine', () => {
     expect(getBalanceLimit(10, 240)).toBeLessThan(getBalanceLimit(2, 44));
     expect(getCatchWindow(72, 72, 10)).toBeLessThan(getCatchWindow(72, 72, 0));
     expect(getCameraZoom(12)).toBeLessThan(getCameraZoom(3));
+    expect(getCameraZoom(16)).toBeLessThan(0.62);
+    expect(getCameraZoom(20)).toBe(0.5);
   });
 
   test('accelerates falling hats under gravity', () => {

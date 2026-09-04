@@ -15,7 +15,7 @@ export const DEFAULT_HAT_METRICS = Object.freeze({
   stackStep: 16,
 });
 
-const TOPPLE_EXPOSURE_SECONDS = 0.14;
+const TOPPLE_EXPOSURE_SECONDS = 0.18;
 const GRAVITY = 980;
 
 function clamp(value, minimum, maximum) {
@@ -37,7 +37,7 @@ export function getMovementProfile(hatCount) {
 }
 
 export function getBalanceLimit(hatCount, stackHeight) {
-  return Math.max(0.22, 0.54 - hatCount * 0.012 - stackHeight * 0.00045);
+  return Math.max(0.26, 0.55 - hatCount * 0.0115 - stackHeight * 0.00042);
 }
 
 export function getCatchWindow(fallingWidth, surfaceWidth, hatCount) {
@@ -45,7 +45,7 @@ export function getCatchWindow(fallingWidth, surfaceWidth, hatCount) {
 }
 
 export function getCameraZoom(hatCount) {
-  return Math.max(0.58, 1 - Math.max(0, hatCount - 3) * 0.027);
+  return Math.max(0.5, 1 - Math.max(0, hatCount - 3) * 0.031);
 }
 
 export function rotateLocalPoint(localX, localY, angle, originX, originY) {
@@ -240,13 +240,27 @@ export class HatStackerEngine {
   getStackLayout() {
     let localX = 0;
     let height = 0;
-    const items = this.stack.map(item => {
+    const wobbleAmplitude = Math.min(8, Math.max(0, this.stack.length - 2) * 0.45);
+    const wobblePhase = this.elapsed * (2.4 + Math.min(16, this.stack.length) * 0.025);
+    const velocityFlex = clamp(-this.balance.angularVelocity * 3, -5, 5);
+    let topLocalX = 0;
+    const items = this.stack.map((item, index) => {
       localX += item.offset;
+      const heightRatio = (index + 1) / this.stack.length;
+      const flexRatio = heightRatio * heightRatio;
+      const flex = (
+        Math.sin(wobblePhase + index * 0.55) * wobbleAmplitude
+        + velocityFlex
+      ) * flexRatio;
       const layoutItem = {
         ...item,
-        localX,
+        localX: localX + flex,
         localBottomY: -height,
+        localRotation: item.restingRotation
+          + Math.sin(wobblePhase + index * 0.7) * 0.035 * heightRatio
+          + clamp(this.balance.angularVelocity * 0.045, -0.07, 0.07) * heightRatio,
       };
+      topLocalX = layoutItem.localX;
       height += item.metrics.stackStep;
       return layoutItem;
     });
@@ -254,7 +268,7 @@ export class HatStackerEngine {
     return {
       items,
       height,
-      topLocalX: localX,
+      topLocalX,
       topLocalY: -height,
       surfaceWidth: items.at(-1)?.metrics.width ?? 66,
     };
@@ -514,7 +528,7 @@ export class HatStackerEngine {
         y: center.y,
         vx: direction * (58 + index * 12) + (this.random() - 0.5) * 42,
         vy: -110 - index * 8,
-        rotation: this.balance.angle + item.restingRotation,
+        rotation: this.balance.angle + item.localRotation,
         rotationVelocity: direction * (1.4 + this.random() * 2),
         settled: false,
       };
