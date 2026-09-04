@@ -8,6 +8,7 @@ Collection of interactive prototypes and explorations.
 
 - [Chat Input Prototype](https://demos.mrleemurray.com/chat-input-prototype/) - VSCode-inspired chat interface
 - [Gutter Tab](https://demos.mrleemurray.com/gutter-tab/) - Gutter tab behaviors exploration
+- [Hat Stacker](https://demos.mrleemurray.com/hat-stacker/) - Catch and balance falling hats with the VS Code pet
 - [Provider Info](https://demos.mrleemurray.com/provider-info/) - Rotating provider quality labels
 
 ## Projects
@@ -44,6 +45,18 @@ AI provider icons that reveal a rotating ring of descriptive qualities on hover,
 
 ```bash
 cd provider-info
+npm install
+npm run dev
+```
+
+### hat-stacker
+
+Canvas mini game starring the VS Code pet. Catch every falling hat while counter-steering an increasingly tall and unstable stack.
+
+**Tech:** Vanilla JavaScript, Canvas, Vite, Vitest
+
+```bash
+cd hat-stacker
 npm install
 npm run dev
 ```

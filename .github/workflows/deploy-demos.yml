@@ -12,6 +12,7 @@ on:
       - 'unified-chat-setting-control/**'
       - 'theme-2026-blur-test/**'
       - 'aquarium-button/**'
+      - 'hat-stacker/**'
       - 'provider-info/**'
       - 'index.html'
       - 'favicon.svg'
@@ -89,6 +90,19 @@ jobs:
         working-directory: ./aquarium-button
         run: npm run build
 
+      # Build hat-stacker
+      - name: Install dependencies (hat-stacker)
+        working-directory: ./hat-stacker
+        run: npm install
+
+      - name: Test hat-stacker
+        working-directory: ./hat-stacker
+        run: npm test
+
+      - name: Build hat-stacker
+        working-directory: ./hat-stacker
+        run: npm run build
+
       # Build provider-info
       - name: Install dependencies (provider-info)
         working-directory: ./provider-info
@@ -108,6 +122,7 @@ jobs:
           cp -r gutter-tab/dist deploy/gutter-tab
           cp -r unified-chat-setting-control/dist deploy/unified-chat-setting-control
           cp -r aquarium-button/dist deploy/aquarium-button
+          cp -r hat-stacker/dist deploy/hat-stacker
           cp -r provider-info/dist deploy/provider-info
           cp -r theme-2026-blur-test deploy/theme-2026-blur-test
           cp index.html deploy/index.html
