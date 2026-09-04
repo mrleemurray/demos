@@ -76,6 +76,19 @@ function handlePauseAction() {
   }
 }
 
+function handleJumpAction() {
+  if (!engine) {
+    return;
+  }
+  if (engine.phase !== 'playing') {
+    handlePrimaryAction();
+    return;
+  }
+  if (engine.jump()) {
+    view.announce('Hop! Stack steadied.');
+  }
+}
+
 function handleGameEvent(event) {
   if (!engine) {
     return;
@@ -139,6 +152,7 @@ async function bootstrap() {
     onPointerTarget: x => engine.setPointerTarget(x),
     onPause: handlePauseAction,
     onPrimary: handlePrimaryAction,
+    onJump: handleJumpAction,
     getCameraZoom: () => renderer.getCurrentZoom(),
   });
 

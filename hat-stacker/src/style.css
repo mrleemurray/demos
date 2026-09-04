@@ -236,6 +236,14 @@ kbd {
   text-align: center;
 }
 
+.game-help-line {
+  display: block;
+}
+
+.game-help-line + .game-help-line {
+  margin-top: 4px;
+}
+
 .game-help kbd {
   min-width: 19px;
   height: 19px;

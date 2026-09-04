@@ -66,8 +66,13 @@ export class GameView {
           </section>
 
           <p class="game-help" id="control-help">
-            Move with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>, or drag.
-            Tap then hold a direction to sprint. <kbd>P</kbd> pauses.
+            <span class="game-help-line">
+              Move with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>, or drag.
+              Tap then hold a direction to sprint.
+            </span>
+            <span class="game-help-line">
+              <kbd>Space</kbd> hops and steadies the stack. <kbd>P</kbd> pauses.
+            </span>
           </p>
           <div class="visually-hidden" data-live-region aria-live="polite" aria-atomic="true"></div>
         </main>

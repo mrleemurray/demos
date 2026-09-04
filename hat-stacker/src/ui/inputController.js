@@ -20,6 +20,7 @@ export class InputController {
     onPointerTarget,
     onPause,
     onPrimary,
+    onJump = () => {},
     getCameraZoom = () => 1,
     now = () => performance.now(),
   }) {
@@ -31,6 +32,7 @@ export class InputController {
     this.onPointerTarget = onPointerTarget;
     this.onPause = onPause;
     this.onPrimary = onPrimary;
+    this.onJump = onJump;
     this.getCameraZoom = getCameraZoom;
     this.now = now;
     this.leftHeld = false;
@@ -77,7 +79,14 @@ export class InputController {
       event.preventDefault();
       this.onPause();
     } else if (
-      (key === ' ' || key === 'enter')
+      key === ' '
+      && !event.repeat
+      && event.target === this.surface
+    ) {
+      event.preventDefault();
+      this.onJump();
+    } else if (
+      key === 'enter'
       && !event.repeat
       && event.target === this.surface
     ) {

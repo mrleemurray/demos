@@ -5,6 +5,7 @@ import {
   getCameraZoom,
   getCatchWindow,
   getMovementProfile,
+  getSpawnDelay,
 } from './engine.js';
 
 function createEngine() {
@@ -227,6 +228,50 @@ suite('HatStackerEngine', () => {
     expect(engine.toppleExposure).toBeLessThan(0.05);
   });
 
+  test('hops and partially steadies the stack after a brief cooldown', () => {
+    const { engine } = createEngine();
+    engine.start();
+    setStackSize(engine, 4);
+    engine.stack.forEach(item => {
+      item.offset = 10;
+      item.restingRotation = 0.08;
+    });
+    engine.balance.angle = 0.4;
+    engine.balance.angularVelocity = 1.2;
+    engine.toppleExposure = 0.2;
+
+    expect(engine.jump()).toBe(true);
+    expect(engine.balance.angle).toBeCloseTo(0.272);
+    expect(engine.balance.angularVelocity).toBeCloseTo(0.6);
+    expect(engine.toppleExposure).toBeCloseTo(0.05);
+    expect(engine.stack.every(item => item.offset === 9)).toBe(true);
+    expect(engine.jump()).toBe(false);
+
+    engine.balance.angle = 0;
+    engine.balance.angularVelocity = 0;
+    engine.stack.forEach(item => {
+      item.offset = 0;
+    });
+    engine.step(0.1);
+    expect(engine.getSnapshot().pet.jumpOffset).toBeGreaterThan(0);
+    const jumpingLayout = engine.getStackLayout();
+    const baseHatLag = jumpingLayout.items[0].localBottomY;
+    const topHatLag = jumpingLayout.items.at(-1).localBottomY
+      + (jumpingLayout.items.length - 1) * 16;
+    expect(topHatLag - baseHatLag).toBeGreaterThan(4);
+    expect(jumpingLayout.items.at(-1).localRotation).not.toBe(
+      jumpingLayout.items[0].localRotation,
+    );
+    expect(engine.jump()).toBe(false);
+    engine.step(0.05);
+    expect(engine.jump()).toBe(true);
+
+    for (let index = 0; index < 6; index += 1) {
+      engine.step(0.05);
+    }
+    expect(engine.getSnapshot().pet.jumpOffset).toBe(0);
+  });
+
   test('flexes the upper hats more than the base as a tall stack wobbles', () => {
     const { engine } = createEngine();
     engine.start();
@@ -312,6 +357,8 @@ suite('HatStackerEngine', () => {
     expect(getCameraZoom(12)).toBeLessThan(getCameraZoom(3));
     expect(getCameraZoom(16)).toBeLessThan(0.62);
     expect(getCameraZoom(20)).toBe(0.5);
+    expect(getSpawnDelay(5, 0)).toBeLessThan(getSpawnDelay(5, 1));
+    expect(getSpawnDelay(40, 0)).toBeGreaterThanOrEqual(0.24);
   });
 
   test('accelerates falling hats under gravity', () => {

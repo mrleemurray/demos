@@ -42,6 +42,10 @@ suite('GameView', () => {
     expect(root.querySelector('#control-help').textContent).toContain(
       'Tap then hold a direction to sprint.',
     );
+    expect(root.querySelector('#control-help').textContent).toContain(
+      'Space hops and steadies the stack.',
+    );
+    expect(root.querySelectorAll('.game-help-line')).toHaveLength(2);
   });
 
   test('shows the simplified ready message', () => {

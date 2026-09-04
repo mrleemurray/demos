@@ -244,7 +244,10 @@ export class GameRenderer {
     }
     const base = {
       x: snapshot.pet.x,
-      y: WORLD.groundY - WORLD.petSpriteHeight + WORLD.stackBaseOffsetY,
+      y: WORLD.groundY
+        - WORLD.petSpriteHeight
+        + WORLD.stackBaseOffsetY
+        - snapshot.pet.jumpOffset,
     };
     const top = rotateLocalPoint(
       snapshot.stackLayout.topLocalX,
@@ -294,7 +297,7 @@ export class GameRenderer {
     const drawY = -displayHeight + bob;
 
     context.save();
-    context.translate(snapshot.pet.x, WORLD.groundY);
+    context.translate(snapshot.pet.x, WORLD.groundY - snapshot.pet.jumpOffset);
     if (snapshot.pet.facing === 'left') {
       context.scale(-1, 1);
     }
@@ -370,7 +373,10 @@ export class GameRenderer {
       return;
     }
 
-    const baseY = WORLD.groundY - WORLD.petSpriteHeight + WORLD.stackBaseOffsetY;
+    const baseY = WORLD.groundY
+      - WORLD.petSpriteHeight
+      + WORLD.stackBaseOffsetY
+      - snapshot.pet.jumpOffset;
     context.save();
     context.translate(snapshot.pet.x, baseY);
     context.rotate(snapshot.balance.angle);

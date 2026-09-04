@@ -37,6 +37,7 @@ suite('InputController', () => {
     const onDirectionChange = vi.fn();
     const onPause = vi.fn();
     const onPrimary = vi.fn();
+    const onJump = vi.fn();
     const controller = new InputController({
       keyboardTarget: window,
       surface,
@@ -46,6 +47,7 @@ suite('InputController', () => {
       onPointerTarget: vi.fn(),
       onPause,
       onPrimary,
+      onJump,
     });
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
@@ -57,6 +59,8 @@ suite('InputController', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }));
     expect(onPause).toHaveBeenCalledOnce();
     surface.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(onJump).toHaveBeenCalledOnce();
+    surface.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(onPrimary).toHaveBeenCalledOnce();
 
     controller.destroy();

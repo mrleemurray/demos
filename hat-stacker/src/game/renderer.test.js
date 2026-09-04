@@ -2,6 +2,52 @@ import { expect, suite, test, vi } from 'vitest';
 import { GameRenderer } from './renderer.js';
 
 suite('GameRenderer', () => {
+  test('moves Buddy and the stack together during a jump', () => {
+    const context = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      scale: vi.fn(),
+      drawImage: vi.fn(),
+    };
+    const renderer = Object.create(GameRenderer.prototype);
+    renderer.reducedMotion = true;
+    renderer.assets = {
+      petSprites: {
+        idle: {
+          staticImage: {},
+          animatedImage: {},
+          frameWidth: 110,
+          frameHeight: 110,
+          frameDurations: [100],
+        },
+      },
+      hats: new Map([['crown', {}]]),
+    };
+    renderer._drawHat = vi.fn();
+    const snapshot = {
+      pet: { x: 480, facing: 'right', vx: 0, jumpOffset: 12 },
+      petMood: 'idle',
+      petExpression: 'dizzy',
+      balance: { angle: 0 },
+      stackLayout: {
+        items: [{
+          type: { id: 'crown' },
+          localX: 0,
+          localBottomY: 0,
+          localRotation: 0,
+        }],
+      },
+    };
+
+    renderer._drawPet(context, snapshot, 0);
+    renderer._drawStack(context, snapshot);
+
+    expect(context.translate).toHaveBeenNthCalledWith(1, 480, 536);
+    expect(context.translate).toHaveBeenNthCalledWith(2, 480, 505);
+  });
+
   test('draws the next-spawn marker while the current hat is falling', () => {
     const context = {
       save: vi.fn(),

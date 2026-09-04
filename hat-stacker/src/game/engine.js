@@ -16,6 +16,8 @@ export const DEFAULT_HAT_METRICS = Object.freeze({
 });
 
 const TOPPLE_EXPOSURE_SECONDS = 0.3;
+const JUMP_DURATION_SECONDS = 0.28;
+const JUMP_COOLDOWN_SECONDS = 0.1;
 const GRAVITY = 980;
 
 function clamp(value, minimum, maximum) {
@@ -50,6 +52,11 @@ export function getCatchWindow(fallingWidth, surfaceWidth, hatCount) {
 
 export function getCameraZoom(hatCount) {
   return Math.max(0.5, 1 - Math.max(0, hatCount - 3) * 0.031);
+}
+
+export function getSpawnDelay(hatCount, randomValue = 0.5) {
+  const baseDelay = Math.max(0.3, 0.72 - hatCount * 0.024);
+  return clamp(baseDelay * (0.82 + clamp(randomValue, 0, 1) * 0.36), 0.24, 0.85);
 }
 
 export function rotateLocalPoint(localX, localY, angle, originX, originY) {
@@ -96,6 +103,8 @@ export class HatStackerEngine {
     this.nextSpawnProgressBase = 0;
     this.toppleExposure = 0;
     this.celebrationTimer = 0;
+    this.jumpTimer = 0;
+    this.jumpCooldown = 0;
     this.inputDirection = 0;
     this.inputSprint = false;
     this.pointerTarget = undefined;
@@ -165,6 +174,23 @@ export class HatStackerEngine {
     }
   }
 
+  jump() {
+    if (this.phase !== 'playing' || this.jumpCooldown > 0) {
+      return false;
+    }
+
+    this.jumpTimer = JUMP_DURATION_SECONDS;
+    this.jumpCooldown = JUMP_COOLDOWN_SECONDS;
+    this.balance.angle *= 0.68;
+    this.balance.angularVelocity *= 0.5;
+    this.toppleExposure *= 0.25;
+    for (const item of this.stack) {
+      item.offset *= 0.9;
+      item.restingRotation *= 0.75;
+    }
+    return true;
+  }
+
   spawnHat({
     typeId,
     x,
@@ -232,6 +258,8 @@ export class HatStackerEngine {
     if (this.phase === 'playing') {
       this.elapsed += delta;
       this.celebrationTimer = Math.max(0, this.celebrationTimer - delta);
+      this.jumpTimer = Math.max(0, this.jumpTimer - delta);
+      this.jumpCooldown = Math.max(0, this.jumpCooldown - delta);
       this._updatePlayer(delta);
       this._updateBalance(delta);
       this._updateFallingHat(delta);
@@ -249,21 +277,46 @@ export class HatStackerEngine {
   getStackBase() {
     return {
       x: this.pet.x,
-      y: WORLD.groundY - WORLD.petSpriteHeight + WORLD.stackBaseOffsetY,
+      y: WORLD.groundY
+        - WORLD.petSpriteHeight
+        + WORLD.stackBaseOffsetY
+        - this.getJumpOffset(),
     };
+  }
+
+  getJumpOffset(delayRatio = 0) {
+    if (this.jumpTimer <= 0) {
+      return 0;
+    }
+    const progress = 1 - this.jumpTimer / JUMP_DURATION_SECONDS;
+    const delayedProgress = clamp(
+      (progress - delayRatio) / (1 - delayRatio),
+      0,
+      1,
+    );
+    return Math.sin(delayedProgress * Math.PI) * 14;
   }
 
   getStackLayout() {
     let localX = 0;
     let height = 0;
+    const petJumpOffset = this.getJumpOffset();
     const wobbleAmplitude = Math.min(12, Math.max(0, this.stack.length - 2) * 0.65);
     const wobblePhase = this.elapsed * (2.4 + Math.min(16, this.stack.length) * 0.025);
     const velocityFlex = clamp(-this.balance.angularVelocity * 4, -7, 7);
     let topLocalX = 0;
+    let topLocalY = 0;
     const items = this.stack.map((item, index) => {
       localX += item.offset;
       const heightRatio = (index + 1) / this.stack.length;
       const flexRatio = heightRatio * heightRatio;
+      const jumpDelay = Math.min(0.55, (index + 1) * 0.055);
+      const hatJumpOffset = this.getJumpOffset(jumpDelay) * (1 + heightRatio * 0.35);
+      const jumpLag = petJumpOffset - hatJumpOffset;
+      const jumpTwist = Math.sin((index + 1) * 1.7)
+        * (hatJumpOffset / 14)
+        * 0.11
+        * heightRatio;
       const flex = (
         Math.sin(wobblePhase + index * 0.55) * wobbleAmplitude
         + velocityFlex
@@ -271,12 +324,14 @@ export class HatStackerEngine {
       const layoutItem = {
         ...item,
         localX: localX + flex,
-        localBottomY: -height,
+        localBottomY: -height + jumpLag,
         localRotation: item.restingRotation
           + Math.sin(wobblePhase + index * 0.7) * 0.05 * heightRatio
-          + clamp(this.balance.angularVelocity * 0.06, -0.1, 0.1) * heightRatio,
+          + clamp(this.balance.angularVelocity * 0.06, -0.1, 0.1) * heightRatio
+          + jumpTwist,
       };
       topLocalX = layoutItem.localX;
+      topLocalY = layoutItem.localBottomY - item.metrics.stackStep;
       height += item.metrics.stackStep;
       return layoutItem;
     });
@@ -285,7 +340,7 @@ export class HatStackerEngine {
       items,
       height,
       topLocalX,
-      topLocalY: -height,
+      topLocalY,
       surfaceWidth: items.at(-1)?.metrics.width ?? 66,
     };
   }
@@ -330,7 +385,10 @@ export class HatStackerEngine {
       score: this.score,
       bestScore: this.bestScore,
       elapsed: this.elapsed,
-      pet: { ...this.pet },
+      pet: {
+        ...this.pet,
+        jumpOffset: this.getJumpOffset(),
+      },
       petMood: this.phase === 'gameover'
         ? 'dizzy'
         : absoluteBalanceRatio >= 0.4
@@ -499,7 +557,7 @@ export class HatStackerEngine {
     this.bestScore = Math.max(this.bestScore, this.score);
     this.celebrationTimer = perfect ? 0.72 : 0.2;
     this.fallingHat = undefined;
-    this.spawnTimer = Math.max(0.3, 0.72 - this.stack.length * 0.024);
+    this.spawnTimer = getSpawnDelay(this.stack.length, this.random());
     this.spawnDelay = this.spawnTimer;
     this.nextSpawnProgressBase = 0.65;
     this._emit({
