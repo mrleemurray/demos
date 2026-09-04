@@ -67,7 +67,7 @@ export class GameView {
 
           <p class="game-help" id="control-help">
             Move with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>, or drag.
-            <kbd>P</kbd> pauses.
+            Tap then hold a direction to sprint. <kbd>P</kbd> pauses.
           </p>
           <div class="visually-hidden" data-live-region aria-live="polite" aria-atomic="true"></div>
         </main>
@@ -102,7 +102,7 @@ export class GameView {
     this.rightButton.disabled = !isPlaying;
 
     if (snapshot.phase === 'ready') {
-      this.overlayTitle.textContent = 'Ready to stack?';
+      this.overlayTitle.textContent = 'Hat Stacker';
       this.overlayCopy.textContent = 'How many hats can you catch?';
       this.primaryButton.textContent = 'Start';
       this.primaryButton.disabled = false;

@@ -49,11 +49,11 @@ suite('InputController', () => {
     });
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(-1);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(-1, false);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(0);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(0, false);
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowLeft', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(1);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(1, false);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }));
     expect(onPause).toHaveBeenCalledOnce();
     surface.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
@@ -61,7 +61,7 @@ suite('InputController', () => {
 
     controller.destroy();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(0);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(0, false);
   });
 
   test('maps playfield pointers into world coordinates and releases the target', () => {
@@ -121,15 +121,73 @@ suite('InputController', () => {
     });
 
     leftButton.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(-1);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(-1, false);
     leftButton.dispatchEvent(pointerEvent('pointerup', { clientX: 0 }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(0);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(0, false);
 
     rightButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(1);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(1, false);
     rightButton.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
-    expect(onDirectionChange).toHaveBeenLastCalledWith(0);
+    expect(onDirectionChange).toHaveBeenLastCalledWith(0, false);
 
+    controller.destroy();
+  });
+
+  test('sprints after a short tap followed by a same-direction hold', () => {
+    let now = 0;
+    const onDirectionChange = vi.fn();
+    const controller = new InputController({
+      keyboardTarget: window,
+      surface,
+      leftButton,
+      rightButton,
+      onDirectionChange,
+      onPointerTarget: vi.fn(),
+      onPause: vi.fn(),
+      onPrimary: vi.fn(),
+      now: () => now,
+    });
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    now = 100;
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    now = 260;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+
+    expect(onDirectionChange).toHaveBeenLastCalledWith(1, true);
+
+    now = 700;
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    expect(onDirectionChange).toHaveBeenLastCalledWith(0, false);
+    controller.destroy();
+  });
+
+  test('does not sprint after a different-direction or late follow-up press', () => {
+    let now = 0;
+    const onDirectionChange = vi.fn();
+    const controller = new InputController({
+      keyboardTarget: window,
+      surface,
+      leftButton,
+      rightButton,
+      onDirectionChange,
+      onPointerTarget: vi.fn(),
+      onPause: vi.fn(),
+      onPrimary: vi.fn(),
+      now: () => now,
+    });
+
+    leftButton.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+    now = 80;
+    leftButton.dispatchEvent(pointerEvent('pointerup', { clientX: 0 }));
+    now = 160;
+    rightButton.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+    expect(onDirectionChange).toHaveBeenLastCalledWith(1, false);
+    rightButton.dispatchEvent(pointerEvent('pointerup', { clientX: 0 }));
+
+    now = 1_000;
+    leftButton.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+    expect(onDirectionChange).toHaveBeenLastCalledWith(-1, false);
     controller.destroy();
   });
 });

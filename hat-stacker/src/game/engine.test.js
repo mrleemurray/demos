@@ -303,6 +303,9 @@ suite('HatStackerEngine', () => {
   test('reduces movement and balance margins as the stack grows', () => {
     expect(getMovementProfile(10).maximumSpeed).toBeLessThan(getMovementProfile(0).maximumSpeed);
     expect(getMovementProfile(10).acceleration).toBeLessThan(getMovementProfile(0).acceleration);
+    expect(getMovementProfile(10, true).maximumSpeed).toBeGreaterThan(
+      getMovementProfile(10).maximumSpeed,
+    );
     expect(getBalanceLimit(10, 240)).toBeLessThan(getBalanceLimit(2, 44));
     expect(getCatchWindow(72, 72, 10)).toBeLessThan(getCatchWindow(72, 72, 0));
     expect(getCatchWindow(52, 66, 0)).toBeGreaterThan(36);

@@ -29,11 +29,15 @@ function moveToward(value, target, amount) {
   return Math.max(value - amount, target);
 }
 
-export function getMovementProfile(hatCount) {
-  return {
-    maximumSpeed: Math.max(238, 470 - hatCount * 15),
-    acceleration: Math.max(760, 1_900 - hatCount * 52),
-  };
+export function getMovementProfile(hatCount, sprinting = false) {
+  const maximumSpeed = Math.max(238, 470 - hatCount * 15);
+  const acceleration = Math.max(760, 1_900 - hatCount * 52);
+  return sprinting
+    ? {
+        maximumSpeed: maximumSpeed * 1.45,
+        acceleration: acceleration * 1.2,
+      }
+    : { maximumSpeed, acceleration };
 }
 
 export function getBalanceLimit(hatCount, stackHeight) {
@@ -93,6 +97,7 @@ export class HatStackerEngine {
     this.toppleExposure = 0;
     this.celebrationTimer = 0;
     this.inputDirection = 0;
+    this.inputSprint = false;
     this.pointerTarget = undefined;
     this.lastAcceleration = 0;
     this.pet = {
@@ -145,8 +150,9 @@ export class HatStackerEngine {
     }
   }
 
-  setDirection(direction) {
+  setDirection(direction, sprinting = false) {
     this.inputDirection = clamp(direction, -1, 1);
+    this.inputSprint = this.inputDirection !== 0 && sprinting;
     if (this.inputDirection !== 0) {
       this.pointerTarget = undefined;
     }
@@ -154,6 +160,9 @@ export class HatStackerEngine {
 
   setPointerTarget(x) {
     this.pointerTarget = x === undefined ? undefined : clamp(x, 0, WORLD.width);
+    if (this.pointerTarget !== undefined) {
+      this.inputSprint = false;
+    }
   }
 
   spawnHat({
@@ -354,7 +363,7 @@ export class HatStackerEngine {
   }
 
   _updatePlayer(delta) {
-    const profile = getMovementProfile(this.stack.length);
+    const profile = getMovementProfile(this.stack.length, this.inputSprint);
     let desiredDirection = this.inputDirection;
 
     if (this.pointerTarget !== undefined) {
@@ -538,6 +547,7 @@ export class HatStackerEngine {
     this.phase = 'gameover';
     this.gameOverReason = reason;
     this.inputDirection = 0;
+    this.inputSprint = false;
     this.pointerTarget = undefined;
 
     const stackedHatCount = this.stack.length;

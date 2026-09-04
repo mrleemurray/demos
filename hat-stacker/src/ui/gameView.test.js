@@ -39,6 +39,9 @@ suite('GameView', () => {
     expect(root.querySelector('.overlay-kicker')).toBeNull();
     expect(root.querySelector('[data-score]')).toBeNull();
     expect(root.querySelector('[data-balance-meter]')).toBeNull();
+    expect(root.querySelector('#control-help').textContent).toContain(
+      'Tap then hold a direction to sprint.',
+    );
   });
 
   test('shows the simplified ready message', () => {
@@ -48,6 +51,7 @@ suite('GameView', () => {
 
     view.setReady(snapshot());
 
+    expect(view.overlayTitle.textContent).toBe('Hat Stacker');
     expect(view.overlayCopy.textContent).toBe('How many hats can you catch?');
   });
 

@@ -135,7 +135,7 @@ async function bootstrap() {
     surface: view.canvas,
     leftButton: view.leftButton,
     rightButton: view.rightButton,
-    onDirectionChange: direction => engine.setDirection(direction),
+    onDirectionChange: (direction, sprinting) => engine.setDirection(direction, sprinting),
     onPointerTarget: x => engine.setPointerTarget(x),
     onPause: handlePauseAction,
     onPrimary: handlePrimaryAction,
