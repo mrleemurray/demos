@@ -15,7 +15,7 @@ export const DEFAULT_HAT_METRICS = Object.freeze({
   stackStep: 16,
 });
 
-const TOPPLE_EXPOSURE_SECONDS = 0.18;
+const TOPPLE_EXPOSURE_SECONDS = 0.3;
 const GRAVITY = 980;
 
 function clamp(value, minimum, maximum) {
@@ -37,11 +37,11 @@ export function getMovementProfile(hatCount) {
 }
 
 export function getBalanceLimit(hatCount, stackHeight) {
-  return Math.max(0.26, 0.55 - hatCount * 0.0115 - stackHeight * 0.00042);
+  return Math.max(0.31, 0.58 - hatCount * 0.0105 - stackHeight * 0.00036);
 }
 
 export function getCatchWindow(fallingWidth, surfaceWidth, hatCount) {
-  return clamp(Math.min(fallingWidth, surfaceWidth) * 0.58 - hatCount * 0.35, 28, 54);
+  return clamp((fallingWidth + surfaceWidth) * 0.32 - hatCount * 0.18, 32, 58);
 }
 
 export function getCameraZoom(hatCount) {
@@ -247,9 +247,9 @@ export class HatStackerEngine {
   getStackLayout() {
     let localX = 0;
     let height = 0;
-    const wobbleAmplitude = Math.min(8, Math.max(0, this.stack.length - 2) * 0.45);
+    const wobbleAmplitude = Math.min(12, Math.max(0, this.stack.length - 2) * 0.65);
     const wobblePhase = this.elapsed * (2.4 + Math.min(16, this.stack.length) * 0.025);
-    const velocityFlex = clamp(-this.balance.angularVelocity * 3, -5, 5);
+    const velocityFlex = clamp(-this.balance.angularVelocity * 4, -7, 7);
     let topLocalX = 0;
     const items = this.stack.map((item, index) => {
       localX += item.offset;
@@ -264,8 +264,8 @@ export class HatStackerEngine {
         localX: localX + flex,
         localBottomY: -height,
         localRotation: item.restingRotation
-          + Math.sin(wobblePhase + index * 0.7) * 0.035 * heightRatio
-          + clamp(this.balance.angularVelocity * 0.045, -0.07, 0.07) * heightRatio,
+          + Math.sin(wobblePhase + index * 0.7) * 0.05 * heightRatio
+          + clamp(this.balance.angularVelocity * 0.06, -0.1, 0.1) * heightRatio,
       };
       topLocalX = layoutItem.localX;
       height += item.metrics.stackStep;
@@ -390,8 +390,8 @@ export class HatStackerEngine {
 
     const layout = this.getStackLayout();
     const load = 1 + this.stack.length * 0.09 + layout.height / 230;
-    const spring = Math.max(3.1, 8.7 - this.stack.length * 0.24);
-    const damping = Math.max(1.25, 3.5 - this.stack.length * 0.06);
+    const spring = Math.max(3.8, 9.4 - this.stack.length * 0.23);
+    const damping = Math.max(0.95, 3.1 - this.stack.length * 0.07);
     const accelerationTorque = -this.lastAcceleration * 0.00135 * load;
     const offsetTorque = (layout.topLocalX / Math.max(70, layout.height)) * 1.15 * load;
     const windTorque = Math.sin(this.elapsed * 1.35 + 0.7) * Math.max(0, this.stack.length - 2) * 0.005;
@@ -453,16 +453,39 @@ export class HatStackerEngine {
   _catchHat(hat, stackTop, distance, catchWindow) {
     const signedDistance = hat.x - stackTop.x;
     const perfect = distance <= catchWindow * 0.18;
-    const offset = clamp(signedDistance * 0.28 + (this.random() - 0.5) * 1.6, -11, 11);
+    const targetLocalX = stackTop.localX + signedDistance * Math.cos(this.balance.angle);
+    const maximumLandingOffset = clamp(
+      Math.min(hat.metrics.width, stackTop.surfaceWidth) * 0.44,
+      16,
+      26,
+    );
     const item = {
       type: hat.type,
       metrics: hat.metrics,
-      offset,
-      restingRotation: (this.random() - 0.5) * 0.07,
+      offset: 0,
+      restingRotation: 0,
     };
 
     this.stack.push(item);
-    this.balance.angularVelocity += (signedDistance / catchWindow) * 0.38;
+    const initialLocalX = this.getStackLayout().items.at(-1).localX;
+    item.offset = clamp(
+      targetLocalX - initialLocalX,
+      -maximumLandingOffset,
+      maximumLandingOffset,
+    );
+    const landingRatio = item.offset / maximumLandingOffset;
+    this.balance.angularVelocity += landingRatio * 0.28;
+    const shiftedLocalX = this.getStackLayout().items.at(-1).localX;
+    item.offset = clamp(
+      item.offset + targetLocalX - shiftedLocalX,
+      -maximumLandingOffset,
+      maximumLandingOffset,
+    );
+    item.restingRotation = clamp(
+      (item.offset / maximumLandingOffset) * 0.075 + (this.random() - 0.5) * 0.025,
+      -0.09,
+      0.09,
+    );
     this.score += 1;
     this.bestScore = Math.max(this.bestScore, this.score);
     this.celebrationTimer = perfect ? 0.72 : 0.2;
@@ -503,7 +526,7 @@ export class HatStackerEngine {
         this._triggerGameOver('topple');
       }
     } else {
-      this.toppleExposure = Math.max(0, this.toppleExposure - delta * 1.8);
+      this.toppleExposure = Math.max(0, this.toppleExposure - delta * 3.2);
     }
   }
 
@@ -532,15 +555,22 @@ export class HatStackerEngine {
       const direction = reason === 'topple'
         ? toppleDirection
         : index % 2 === 0 ? -1 : 1;
+      const horizontalSpeed = reason === 'topple'
+        ? 90 + index * 16
+        : 58 + index * 12;
       return {
         type: item.type,
         metrics: item.metrics,
         x: center.x,
         y: center.y,
-        vx: direction * (58 + index * 12) + (this.random() - 0.5) * 42,
-        vy: -110 - index * 8,
+        vx: direction * horizontalSpeed + (this.random() - 0.5) * (reason === 'topple' ? 90 : 42),
+        vy: reason === 'topple' ? -190 - index * 10 : -110 - index * 8,
         rotation: this.balance.angle + item.localRotation,
-        rotationVelocity: direction * (1.4 + this.random() * 2),
+        rotationVelocity: direction * (
+          reason === 'topple'
+            ? 2.6 + this.random() * 3.4
+            : 1.4 + this.random() * 2
+        ),
         settled: false,
       };
     });

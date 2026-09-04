@@ -113,6 +113,28 @@ suite('HatStackerEngine', () => {
     expect(events.find(event => event.type === 'catch')).not.toHaveProperty('points');
   });
 
+  test('catches near-edge hats and preserves their landing position', () => {
+    const { engine } = createEngine();
+    engine.start();
+
+    dropAtStackTop(engine, 36);
+
+    expect(engine.phase).toBe('playing');
+    expect(engine.stack).toHaveLength(1);
+    expect(engine.stack[0].offset).toBeGreaterThan(20);
+    expect(engine.stack[0].restingRotation).toBeGreaterThan(0);
+  });
+
+  test('places ordinary catches close to their actual contact point', () => {
+    const { engine } = createEngine();
+    engine.start();
+
+    dropAtStackTop(engine, 18);
+
+    const landedX = engine.getSnapshot().stackLayout.items[0].localX;
+    expect(landedX).toBeCloseTo(18, 0);
+  });
+
   test('lets a missed hat fall to the ground before ending the run', () => {
     const { engine, events } = createEngine();
     engine.start();
@@ -149,8 +171,10 @@ suite('HatStackerEngine', () => {
     dropAtStackTop(engine);
 
     const layout = engine.getStackLayout();
-    engine.balance.angle = getBalanceLimit(engine.stack.length, layout.height) * 1.8;
-    for (let index = 0; index < 4; index += 1) {
+    const limit = getBalanceLimit(engine.stack.length, layout.height);
+    for (let index = 0; index < 7 && engine.phase === 'playing'; index += 1) {
+      engine.balance.angle = limit * 2.2;
+      engine.balance.angularVelocity = 0;
       engine.step(0.05);
     }
 
@@ -159,6 +183,7 @@ suite('HatStackerEngine', () => {
       gameOverReason: 'topple',
     });
     expect(engine.debris).toHaveLength(2);
+    expect(engine.debris.every(item => item.vy <= -190)).toBe(true);
     expect(engine.stack).toHaveLength(0);
   });
 
@@ -168,19 +193,38 @@ suite('HatStackerEngine', () => {
     setStackSize(engine, 16);
 
     const snapshot = engine.getSnapshot();
-    expect(snapshot.balance.limit).toBeGreaterThanOrEqual(0.26);
-    engine.balance.angle = snapshot.balance.limit * 1.8;
+    expect(snapshot.balance.limit).toBeGreaterThanOrEqual(0.31);
 
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 5; index += 1) {
+      engine.balance.angle = snapshot.balance.limit * 2.2;
+      engine.balance.angularVelocity = 0;
       engine.step(0.05);
     }
     expect(engine.phase).toBe('playing');
 
-    engine.step(0.05);
+    for (let index = 0; index < 2 && engine.phase === 'playing'; index += 1) {
+      engine.balance.angle = snapshot.balance.limit * 2.2;
+      engine.balance.angularVelocity = 0;
+      engine.step(0.05);
+    }
     expect(engine.getSnapshot()).toMatchObject({
       phase: 'gameover',
       gameOverReason: 'topple',
     });
+  });
+
+  test('quickly forgives recovered balance exposure', () => {
+    const { engine } = createEngine();
+    engine.start();
+    setStackSize(engine, 16);
+    engine.toppleExposure = 0.2;
+    engine.balance.angle = 0;
+    engine.balance.angularVelocity = 0;
+
+    engine.step(0.05);
+
+    expect(engine.phase).toBe('playing');
+    expect(engine.toppleExposure).toBeLessThan(0.05);
   });
 
   test('flexes the upper hats more than the base as a tall stack wobbles', () => {
@@ -261,6 +305,7 @@ suite('HatStackerEngine', () => {
     expect(getMovementProfile(10).acceleration).toBeLessThan(getMovementProfile(0).acceleration);
     expect(getBalanceLimit(10, 240)).toBeLessThan(getBalanceLimit(2, 44));
     expect(getCatchWindow(72, 72, 10)).toBeLessThan(getCatchWindow(72, 72, 0));
+    expect(getCatchWindow(52, 66, 0)).toBeGreaterThan(36);
     expect(getCameraZoom(12)).toBeLessThan(getCameraZoom(3));
     expect(getCameraZoom(16)).toBeLessThan(0.62);
     expect(getCameraZoom(20)).toBe(0.5);
