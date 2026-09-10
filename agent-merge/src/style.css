@@ -1,0 +1,389 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --vscode-spacing-size20: 2px;
+  --vscode-spacing-size40: 4px;
+  --vscode-spacing-size60: 6px;
+  --vscode-spacing-size80: 8px;
+  --vscode-spacing-size100: 10px;
+  --vscode-spacing-size120: 12px;
+  --vscode-spacing-size160: 16px;
+  --vscode-spacing-size200: 20px;
+  --vscode-spacing-size240: 24px;
+  --vscode-spacing-size280: 28px;
+  --vscode-spacing-size320: 32px;
+
+  --vscode-cornerRadius-xSmall: 2px;
+  --vscode-cornerRadius-small: 4px;
+  --vscode-cornerRadius-medium: 6px;
+  --vscode-cornerRadius-large: 8px;
+  --vscode-cornerRadius-circle: 9999px;
+
+  --vscode-fontSize-heading2: 18px;
+  --vscode-fontSize-heading3: 13px;
+  --vscode-fontSize-body1: 13px;
+  --vscode-fontSize-body2: 11px;
+  --vscode-fontSize-label1: 12px;
+  --vscode-fontSize-label2: 11px;
+  --vscode-fontSize-label3: 10px;
+  --vscode-fontWeight-regular: 400;
+  --vscode-fontWeight-semiBold: 600;
+  --vscode-codiconFontSize: 16px;
+  --vscode-codiconFontSize-compact: 12px;
+  --vscode-strokeThickness: 1px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.sessions-list::-webkit-scrollbar,
+.chat-transcript::-webkit-scrollbar {
+  width: var(--vscode-spacing-size100);
+  height: var(--vscode-spacing-size100);
+}
+
+.sessions-list::-webkit-scrollbar-track,
+.chat-transcript::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sessions-list::-webkit-scrollbar-thumb,
+.chat-transcript::-webkit-scrollbar-thumb {
+  min-height: var(--vscode-spacing-size200);
+  background: var(--vscode-scrollbarSlider-background);
+  background-clip: padding-box;
+  border: var(--vscode-strokeThickness) solid transparent;
+  border-radius: var(--vscode-cornerRadius-circle);
+}
+
+.sessions-list::-webkit-scrollbar-thumb:hover,
+.chat-transcript::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+  background-clip: padding-box;
+}
+
+.sessions-list::-webkit-scrollbar-thumb:active,
+.chat-transcript::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground);
+  background-clip: padding-box;
+}
+
+.sessions-list::-webkit-scrollbar-corner,
+.chat-transcript::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .sessions-list,
+  .chat-transcript {
+    scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+.prototype-app {
+  --lab-background: #101116;
+  --lab-stage-background: #121319;
+  --lab-grid-line: rgba(255, 255, 255, 0.025);
+
+  --vscode-foreground: #cccccc;
+  --vscode-descriptionForeground: #8c8c8c;
+  --vscode-disabledForeground: #656565;
+  --vscode-focusBorder: #007fd4;
+  --vscode-icon-foreground: #c5c5c5;
+  --vscode-window-border: #45464f;
+  --vscode-widget-border: transparent;
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.35);
+  --vscode-scrollbarSlider-background: rgba(121, 121, 121, 0.4);
+  --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+  --vscode-scrollbarSlider-activeBackground: rgba(191, 191, 191, 0.4);
+  --vscode-editor-background: #181818;
+  --vscode-input-foreground: #cccccc;
+  --vscode-editorGroup-border: #2b2b2b;
+  --vscode-agents-background: #17171c;
+  --vscode-agentsPanel-background: #181818;
+  --vscode-agentsPanel-border: #2b2b2b;
+  --vscode-agentsGradient-tintColor: #2d5d85;
+  --vscode-agents-layout-floatingPanelGap: 6px;
+  --vscode-agentsNewSessionButton-background: transparent;
+  --vscode-agentsNewSessionButton-foreground: #cccccc;
+  --vscode-agentsNewSessionButton-border: #454545;
+  --vscode-agentsNewSessionButton-hoverBackground: rgba(90, 93, 94, 0.31);
+  --vscode-commandCenter-foreground: #cccccc;
+  --vscode-commandCenter-border: #454545;
+  --vscode-commandCenter-activeForeground: #ffffff;
+  --vscode-commandCenter-activeBackground: rgba(90, 93, 94, 0.31);
+  --vscode-commandCenter-activeBorder: #656565;
+  --vscode-titleBar-activeBackground: #181818;
+  --vscode-titleBar-border: #2b2b2b;
+  --vscode-activityBar-background: #181818;
+  --vscode-activityBar-foreground: #ffffff;
+  --vscode-activityBar-inactiveForeground: #868686;
+  --vscode-activityBar-border: #2b2b2b;
+  --vscode-activityBar-activeBorder: #0078d4;
+  --vscode-sideBar-background: #181818;
+  --vscode-sideBar-foreground: #cccccc;
+  --vscode-sideBarTitle-foreground: #bbbbbb;
+  --vscode-sideBarSectionHeader-foreground: #bbbbbb;
+  --vscode-sideBar-border: #2b2b2b;
+  --vscode-sideBarSectionHeader-border: #2b2b2b;
+  --vscode-panelSection-border: #2b2b2b;
+  --vscode-list-hoverBackground: #2a2d2e;
+  --vscode-list-activeSelectionBackground: #37373d;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
+  --vscode-toolbar-activeBackground: rgba(99, 102, 103, 0.4);
+  --vscode-chat-requestBubbleBackground: #2b2b2b;
+  --vscode-chat-requestBubbleForeground: #cccccc;
+  --vscode-chat-requestBorder: transparent;
+  --vscode-chat-statusBackground: #242424;
+  --vscode-input-background: #202020;
+  --vscode-input-border: #454545;
+  --vscode-input-placeholderForeground: #858585;
+  --vscode-button-background: #0e639c;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-border: transparent;
+  --vscode-button-hoverBackground: #1177bb;
+  --vscode-button-secondaryBackground: #313131;
+  --vscode-button-secondaryBorder: transparent;
+  --vscode-button-secondaryHoverBackground: #3c3c3c;
+  --vscode-textLink-foreground: #4daafc;
+  --vscode-textLink-activeForeground: #75beff;
+  --vscode-textPreformat-foreground: #d7ba7d;
+  --vscode-textCodeBlock-background: #202020;
+  --vscode-errorForeground: #f48771;
+  --vscode-warningForeground: #cca700;
+  --vscode-testing-iconPassed: #73c991;
+  --vscode-gitDecoration-addedResourceForeground: #81b88b;
+  --vscode-statusBar-background: #181818;
+  --vscode-statusBar-foreground: #ffffff;
+  --vscode-statusBar-border: #2b2b2b;
+
+  --prototype-pane-title-height: 35px;
+  --prototype-sessions-sidebar-width: 245px;
+  --prototype-session-content-max-width: 760px;
+  --prototype-session-content-padding: var(--vscode-spacing-size320);
+  --prototype-session-row-padding: var(--vscode-spacing-size80);
+  --prototype-chat-header-height: 48px;
+  --prototype-chat-input-height: 52px;
+  --prototype-agent-merge-header-height: 32px;
+  --prototype-activity-action-size: 40px;
+  --prototype-button-height: 28px;
+  --prototype-change-row-height: 24px;
+  --prototype-row-padding: var(--vscode-spacing-size80);
+  --prototype-transcript-gap: var(--vscode-spacing-size160);
+  --prototype-transcript-padding: var(--vscode-spacing-size200);
+
+  color-scheme: dark;
+}
+
+.prototype-app[data-theme='light'] {
+  --lab-background: #eff0f4;
+  --lab-stage-background: #e8e9ee;
+  --lab-grid-line: rgba(0, 0, 0, 0.035);
+
+  --vscode-foreground: #3b3b3b;
+  --vscode-descriptionForeground: #717171;
+  --vscode-disabledForeground: #a0a0a0;
+  --vscode-focusBorder: #0078d4;
+  --vscode-icon-foreground: #424242;
+  --vscode-window-border: #c8c8c8;
+  --vscode-widget-border: #d3d3d3;
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.18);
+  --vscode-scrollbarSlider-background: rgba(100, 100, 100, 0.4);
+  --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+  --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, 0.6);
+  --vscode-editor-background: #ffffff;
+  --vscode-input-foreground: #3b3b3b;
+  --vscode-editorGroup-border: #e7e7e7;
+  --vscode-agents-background: #f0f0f5;
+  --vscode-agentsPanel-background: #ffffff;
+  --vscode-agentsPanel-border: #d7d7d7;
+  --vscode-agentsGradient-tintColor: #8dbfea;
+  --vscode-agentsNewSessionButton-background: transparent;
+  --vscode-agentsNewSessionButton-foreground: #3b3b3b;
+  --vscode-agentsNewSessionButton-border: #c7c7c7;
+  --vscode-agentsNewSessionButton-hoverBackground: rgba(184, 184, 184, 0.31);
+  --vscode-commandCenter-foreground: #3b3b3b;
+  --vscode-commandCenter-border: #c7c7c7;
+  --vscode-commandCenter-activeForeground: #222222;
+  --vscode-commandCenter-activeBackground: rgba(184, 184, 184, 0.31);
+  --vscode-commandCenter-activeBorder: #a8a8a8;
+  --vscode-titleBar-activeBackground: #f3f3f3;
+  --vscode-titleBar-border: #d7d7d7;
+  --vscode-activityBar-background: #f3f3f3;
+  --vscode-activityBar-foreground: #2d2d2d;
+  --vscode-activityBar-inactiveForeground: #6f6f6f;
+  --vscode-activityBar-border: #d7d7d7;
+  --vscode-activityBar-activeBorder: #005fb8;
+  --vscode-sideBar-background: #f3f3f3;
+  --vscode-sideBar-foreground: #3b3b3b;
+  --vscode-sideBarTitle-foreground: #424242;
+  --vscode-sideBarSectionHeader-foreground: #424242;
+  --vscode-sideBar-border: #d7d7d7;
+  --vscode-sideBarSectionHeader-border: #d7d7d7;
+  --vscode-panelSection-border: #d7d7d7;
+  --vscode-list-hoverBackground: #e8e8e8;
+  --vscode-list-activeSelectionBackground: #e4e6f1;
+  --vscode-list-activeSelectionForeground: #222222;
+  --vscode-toolbar-hoverBackground: rgba(184, 184, 184, 0.31);
+  --vscode-toolbar-activeBackground: rgba(166, 166, 166, 0.4);
+  --vscode-chat-requestBubbleBackground: #eff6fc;
+  --vscode-chat-requestBubbleForeground: #3b3b3b;
+  --vscode-chat-requestBorder: #d6e8f5;
+  --vscode-chat-statusBackground: #f3f3f3;
+  --vscode-input-background: #ffffff;
+  --vscode-input-border: #cecece;
+  --vscode-input-placeholderForeground: #767676;
+  --vscode-button-background: #0078d4;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-border: transparent;
+  --vscode-button-hoverBackground: #026ec1;
+  --vscode-button-secondaryBackground: #e5e5e5;
+  --vscode-button-secondaryBorder: transparent;
+  --vscode-button-secondaryHoverBackground: #cccccc;
+  --vscode-textLink-foreground: #006ab1;
+  --vscode-textLink-activeForeground: #006ab1;
+  --vscode-textPreformat-foreground: #a31515;
+  --vscode-textCodeBlock-background: #f2f2f2;
+  --vscode-errorForeground: #e51400;
+  --vscode-warningForeground: #bf8803;
+  --vscode-testing-iconPassed: #388a34;
+  --vscode-gitDecoration-addedResourceForeground: #587c0c;
+  --vscode-statusBar-background: #007acc;
+  --vscode-statusBar-foreground: #ffffff;
+  --vscode-statusBar-border: #007acc;
+
+  color-scheme: light;
+}
+
+.prototype-app[data-theme='high-contrast'] {
+  --lab-background: #000000;
+  --lab-stage-background: #000000;
+  --lab-grid-line: transparent;
+
+  --vscode-foreground: #ffffff;
+  --vscode-descriptionForeground: #ffffff;
+  --vscode-disabledForeground: #ffffff;
+  --vscode-focusBorder: #f38518;
+  --vscode-icon-foreground: #ffffff;
+  --vscode-window-border: #ffffff;
+  --vscode-widget-border: #ffffff;
+  --vscode-widget-shadow: transparent;
+  --vscode-scrollbarSlider-background: rgba(255, 255, 255, 0.6);
+  --vscode-scrollbarSlider-hoverBackground: rgba(255, 255, 255, 0.8);
+  --vscode-scrollbarSlider-activeBackground: #ffffff;
+  --vscode-editor-background: #000000;
+  --vscode-input-foreground: #ffffff;
+  --vscode-editorGroup-border: #ffffff;
+  --vscode-agents-background: #000000;
+  --vscode-agentsPanel-background: #000000;
+  --vscode-agentsPanel-border: #ffffff;
+  --vscode-agentsGradient-tintColor: #000000;
+  --vscode-agentsNewSessionButton-background: #000000;
+  --vscode-agentsNewSessionButton-foreground: #ffffff;
+  --vscode-agentsNewSessionButton-border: #ffffff;
+  --vscode-agentsNewSessionButton-hoverBackground: #1a1a1a;
+  --vscode-commandCenter-foreground: #ffffff;
+  --vscode-commandCenter-border: #ffffff;
+  --vscode-commandCenter-activeForeground: #ffffff;
+  --vscode-commandCenter-activeBackground: #1a1a1a;
+  --vscode-commandCenter-activeBorder: #f38518;
+  --vscode-titleBar-activeBackground: #000000;
+  --vscode-titleBar-border: #ffffff;
+  --vscode-activityBar-background: #000000;
+  --vscode-activityBar-foreground: #ffffff;
+  --vscode-activityBar-inactiveForeground: #ffffff;
+  --vscode-activityBar-border: #ffffff;
+  --vscode-activityBar-activeBorder: #f38518;
+  --vscode-sideBar-background: #000000;
+  --vscode-sideBar-foreground: #ffffff;
+  --vscode-sideBarTitle-foreground: #ffffff;
+  --vscode-sideBarSectionHeader-foreground: #ffffff;
+  --vscode-sideBar-border: #ffffff;
+  --vscode-sideBarSectionHeader-border: #ffffff;
+  --vscode-panelSection-border: #ffffff;
+  --vscode-list-hoverBackground: #1a1a1a;
+  --vscode-list-activeSelectionBackground: #000000;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-toolbar-hoverBackground: #1a1a1a;
+  --vscode-toolbar-activeBackground: #1a1a1a;
+  --vscode-chat-requestBubbleBackground: #000000;
+  --vscode-chat-requestBubbleForeground: #ffffff;
+  --vscode-chat-requestBorder: #ffffff;
+  --vscode-chat-statusBackground: #000000;
+  --vscode-input-background: #000000;
+  --vscode-input-border: #ffffff;
+  --vscode-input-placeholderForeground: #ffffff;
+  --vscode-button-background: #000000;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-border: #ffffff;
+  --vscode-button-hoverBackground: #1a1a1a;
+  --vscode-button-secondaryBackground: #000000;
+  --vscode-button-secondaryBorder: #ffffff;
+  --vscode-button-secondaryHoverBackground: #1a1a1a;
+  --vscode-textLink-foreground: #21a6ff;
+  --vscode-textLink-activeForeground: #21a6ff;
+  --vscode-textPreformat-foreground: #ffffff;
+  --vscode-textCodeBlock-background: #000000;
+  --vscode-errorForeground: #ff0000;
+  --vscode-warningForeground: #f38518;
+  --vscode-testing-iconPassed: #00ff00;
+  --vscode-gitDecoration-addedResourceForeground: #00ff00;
+  --vscode-statusBar-background: #000000;
+  --vscode-statusBar-foreground: #ffffff;
+  --vscode-statusBar-border: #ffffff;
+
+  color-scheme: dark;
+}
+
+.prototype-app[data-density='compact'] {
+  --prototype-chat-header-height: 40px;
+  --prototype-chat-input-height: 40px;
+  --prototype-agent-merge-header-height: 28px;
+  --prototype-activity-action-size: 32px;
+  --prototype-button-height: 24px;
+  --prototype-change-row-height: 20px;
+  --prototype-row-padding: var(--vscode-spacing-size40);
+  --prototype-session-content-padding: var(--vscode-spacing-size200);
+  --prototype-session-row-padding: var(--vscode-spacing-size40);
+  --prototype-transcript-gap: var(--vscode-spacing-size100);
+  --prototype-transcript-padding: var(--vscode-spacing-size120);
+}
+
+.sr-only {
+  position: absolute;
+  width: var(--vscode-strokeThickness);
+  height: var(--vscode-strokeThickness);
+  padding: 0;
+  margin: calc(-1 * var(--vscode-strokeThickness));
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

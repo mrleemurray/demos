@@ -6,12 +6,25 @@ Collection of interactive prototypes and explorations.
 
 🚀 **[View all demos](https://demos.mrleemurray.com)**
 
+- [Agent Merge Lab](https://demos.mrleemurray.com/agent-merge/) - Standalone workbench for Agent Merge UX exploration
 - [Chat Input Prototype](https://demos.mrleemurray.com/chat-input-prototype/) - VSCode-inspired chat interface
 - [Gutter Tab](https://demos.mrleemurray.com/gutter-tab/) - Gutter tab behaviors exploration
 - [Hat Stacker](https://demos.mrleemurray.com/hat-stacker/) - Catch and balance falling hats with the VS Code pet
 - [Provider Info](https://demos.mrleemurray.com/provider-info/) - Rotating provider quality labels
 
 ## Projects
+
+### agent-merge
+
+Standalone Agent Merge UX lab with mocked pull request scenarios, per-session controls, and an Agents Window shell.
+
+**Tech:** Vue 3, Vite, Vitest, VS Code Codicons
+
+```bash
+cd agent-merge
+npm install
+npm run dev
+```
 
 ### chat-input-prototype
 

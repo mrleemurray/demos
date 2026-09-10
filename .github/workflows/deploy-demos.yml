@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - 'agent-merge/**'
       - 'agent-sessions/**'
       - 'bento-layout/**'
       - 'chat-input-prototype/**'
@@ -35,6 +36,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # Build agent-merge
+      - name: Install dependencies (agent-merge)
+        working-directory: ./agent-merge
+        run: npm install --registry=https://registry.npmjs.org/
+
+      - name: Test agent-merge
+        working-directory: ./agent-merge
+        run: npm test
+
+      - name: Build agent-merge
+        working-directory: ./agent-merge
+        run: npm run build
       
       # Build agent-sessions
       - name: Install dependencies (agent-sessions)
@@ -116,6 +130,7 @@ jobs:
       - name: Create deployment directory
         run: |
           mkdir -p deploy
+          cp -r agent-merge/dist deploy/agent-merge
           cp -r agent-sessions/dist deploy/agent-sessions
           cp -r bento-layout/dist deploy/bento-layout
           cp -r chat-input-prototype/dist deploy/chat-input-prototype
