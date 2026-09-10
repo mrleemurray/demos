@@ -1,7 +1,12 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AgentMergeCard from './AgentMergeCard.vue'
-import { formatAgentMergeStatus } from '../model/scenarios.js'
+import AgentMergeStatusWidget from './AgentMergeStatusWidget.vue'
+import CreatePullRequestDialog from './CreatePullRequestDialog.vue'
+import {
+  formatAgentMergeStatus,
+  getPrePullRequestAction,
+} from '../model/scenarios.js'
 
 const props = defineProps({
   scenario: {
@@ -12,15 +17,70 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  sessionSummaries: {
+    type: Object,
+    required: true,
+  },
   settings: {
     type: Object,
     required: true,
   },
+  showChangesPullRequestSettings: {
+    type: Boolean,
+    required: true,
+  },
+  agentMergeStatus: {
+    type: Object,
+    required: true,
+  },
+  handlingVariant: {
+    type: String,
+    required: true,
+  },
+  pullRequestDetails: {
+    type: Object,
+    required: true,
+  },
+  pullRequestCreated: {
+    type: Boolean,
+    required: true,
+  },
+  repositoryState: {
+    type: String,
+    required: true,
+  },
 })
 
-const emit = defineEmits(['select:scenario', 'update:setting'])
+const emit = defineEmits([
+  'advance:repository-state',
+  'create:pull-request',
+  'select:scenario',
+  'update:setting',
+])
 
+const createPullRequestTrigger = ref()
+const pullRequestCreatedMessage = ref()
+const agentMergeSettingsTrigger = ref()
+const showingCreatePullRequestDialog = ref(false)
+const showingAgentMergeSettingsDialog = ref(false)
+const inactiveSessionStatusId = ref()
+const inactiveSessionStatusPosition = ref({})
+const inactiveSessionStatusTrigger = ref()
+const inactiveSessionHoverDelay = 1000
+let inactiveSessionHoverTimer
+const projectName = 'vscode'
 const status = computed(() => formatAgentMergeStatus(props.scenario))
+const prePullRequestAction = computed(() =>
+  getPrePullRequestAction(props.repositoryState),
+)
+const agentMergeStatusIcon = computed(() =>
+  getAgentMergeStatusIcon(props.agentMergeStatus.kind),
+)
+const pullRequestScenario = computed(() => ({
+  ...props.scenario,
+  title: props.pullRequestDetails.title,
+  baseBranch: props.pullRequestDetails.baseBranch,
+}))
 const mergePolicy = computed(() => {
   switch (props.settings.mergePullRequest) {
     case 'always':
@@ -39,9 +99,192 @@ const authorizedActions = computed(() =>
     props.settings.resolveConflicts && 'conflicts',
   ].filter(Boolean),
 )
+const agentMergePolicyDescription = computed(() => {
+  if (!props.settings.enabled) {
+    return "You're in control of reviews, checks, and merging."
+  }
+  if (!authorizedActions.value.length) {
+    return `It can monitor the pull request, but no repair actions are allowed. ${mergePolicy.value}.`
+  }
+  return `It may handle ${authorizedActions.value.join(', ')}. ${mergePolicy.value}.`
+})
 
-function toggleAgentMerge() {
-  emit('update:setting', { key: 'enabled', value: !props.settings.enabled })
+function openAgentMergeSettings(event) {
+  if (!props.showChangesPullRequestSettings) {
+    throw new Error('Pull request settings in Changes are hidden')
+  }
+  agentMergeSettingsTrigger.value = event.currentTarget
+  showingAgentMergeSettingsDialog.value = true
+}
+
+function getChangeCountLabel(file) {
+  const additions = file.additions === 1 ? 'addition' : 'additions'
+  const deletions = file.deletions === 1 ? 'deletion' : 'deletions'
+  return `${file.additions} ${additions}, ${file.deletions} ${deletions}`
+}
+
+function getSessionRepositoryAction(session) {
+  return getPrePullRequestAction(
+    props.sessionSummaries[session.id].repositoryState,
+  )
+}
+
+function getSessionListState(session) {
+  const summary = props.sessionSummaries[session.id]
+  if (summary.pullRequestCreated) {
+    return {
+      kind: summary.agentMergeStatus.kind,
+      icon: getAgentMergeStatusIcon(summary.agentMergeStatus.kind),
+      label: `#${session.pullRequestNumber} · ${summary.agentMergeStatus.label}`,
+    }
+  }
+
+  const repositoryAction = getSessionRepositoryAction(session)
+  return {
+    kind: repositoryAction.kind,
+    icon: repositoryAction.sessionIcon,
+    label: repositoryAction.sessionLabel,
+  }
+}
+
+function getAgentMergeStatusIcon(kind) {
+  switch (kind) {
+    case 'disabled':
+      return 'codicon-circle-slash'
+    case 'monitoring':
+      return 'codicon-eye'
+    default:
+      return 'codicon-git-merge'
+  }
+}
+
+function canShowInactiveSessionStatus(session) {
+  const summary = props.sessionSummaries[session.id]
+  return (
+    session.id !== props.scenario.id &&
+    summary.pullRequestCreated &&
+    summary.settings.enabled
+  )
+}
+
+function clearInactiveSessionHoverTimer() {
+  if (inactiveSessionHoverTimer !== undefined) {
+    clearTimeout(inactiveSessionHoverTimer)
+    inactiveSessionHoverTimer = undefined
+  }
+}
+
+function openInactiveSessionStatus(container, session) {
+  if (!canShowInactiveSessionStatus(session)) {
+    return
+  }
+
+  const bounds = container.getBoundingClientRect()
+  const targetWindow = container.ownerDocument.defaultView
+  const position = {
+    left: `${bounds.right}px`,
+  }
+
+  if (bounds.top + bounds.height / 2 <= targetWindow.innerHeight / 2) {
+    position.top = `${bounds.top}px`
+  } else {
+    position.bottom = `${targetWindow.innerHeight - bounds.bottom}px`
+  }
+
+  inactiveSessionStatusTrigger.value =
+    container.querySelector('.session-item')
+  inactiveSessionStatusPosition.value = position
+  inactiveSessionStatusId.value = session.id
+}
+
+function showInactiveSessionStatus(event, session) {
+  clearInactiveSessionHoverTimer()
+  const container = event.currentTarget
+  if (event.type === 'mouseenter') {
+    inactiveSessionHoverTimer = setTimeout(() => {
+      inactiveSessionHoverTimer = undefined
+      openInactiveSessionStatus(container, session)
+    }, inactiveSessionHoverDelay)
+    return
+  }
+
+  openInactiveSessionStatus(container, session)
+}
+
+function hideInactiveSessionStatus(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    clearInactiveSessionHoverTimer()
+    inactiveSessionStatusId.value = undefined
+  }
+}
+
+async function closeInactiveSessionStatus(restoreFocus = false) {
+  clearInactiveSessionHoverTimer()
+  if (restoreFocus) {
+    inactiveSessionStatusTrigger.value?.focus()
+  }
+  inactiveSessionStatusId.value = undefined
+  await nextTick()
+}
+
+watch(
+  () => props.scenario.id,
+  () => {
+    clearInactiveSessionHoverTimer()
+    showingCreatePullRequestDialog.value = false
+    showingAgentMergeSettingsDialog.value = false
+    inactiveSessionStatusId.value = undefined
+  },
+)
+watch(
+  () => props.showChangesPullRequestSettings,
+  visible => {
+    if (!visible) {
+      showingAgentMergeSettingsDialog.value = false
+    }
+  },
+)
+
+onBeforeUnmount(clearInactiveSessionHoverTimer)
+
+function openCreatePullRequestDialog(event) {
+  createPullRequestTrigger.value = event.currentTarget
+  showingCreatePullRequestDialog.value = true
+}
+
+function runRepositoryAction(event) {
+  if (prePullRequestAction.value.opensPullRequest) {
+    openCreatePullRequestDialog(event)
+    return
+  }
+  emit('advance:repository-state')
+}
+
+async function cancelCreatePullRequest() {
+  showingCreatePullRequestDialog.value = false
+  await nextTick()
+  createPullRequestTrigger.value?.focus()
+}
+
+async function createPullRequest(configuration) {
+  emit('create:pull-request', configuration)
+  showingCreatePullRequestDialog.value = false
+  createPullRequestTrigger.value = undefined
+  await nextTick()
+  pullRequestCreatedMessage.value?.focus()
+}
+
+async function closeAgentMergeSettings() {
+  showingAgentMergeSettingsDialog.value = false
+  await nextTick()
+  agentMergeSettingsTrigger.value?.focus()
+}
+
+async function saveAgentMergeSettings(settings) {
+  for (const [key, value] of Object.entries(settings)) {
+    emit('update:setting', { key, value })
+  }
+  await closeAgentMergeSettings()
 }
 </script>
 
@@ -67,21 +310,28 @@ function toggleAgentMerge() {
         </div>
 
         <div class="titlebar-center">
-          <button
-            class="session-picker"
-            type="button"
-            :aria-label="`Show Sessions: ${scenario.title}`"
-          >
-            <i class="codicon codicon-folder" aria-hidden="true" />
-            <span>{{ scenario.title }}</span>
-          </button>
+          <div class="command-center">
+            <button
+              class="project-picker"
+              type="button"
+              :aria-label="`Show Workspace: ${projectName}`"
+            >
+              <i class="codicon codicon-folder" aria-hidden="true" />
+              <span class="project-picker-title">{{ projectName }}</span>
+            </button>
+            <AgentMergeStatusWidget
+              v-if="pullRequestCreated"
+              :status="agentMergeStatus"
+              :scenario="scenario"
+              :settings="settings"
+              :handling-variant="handlingVariant"
+              :pull-request-details="pullRequestDetails"
+              @update:setting="emit('update:setting', $event)"
+            />
+          </div>
         </div>
 
         <div class="titlebar-right">
-          <button class="open-in-vscode" type="button" aria-label="Open in VS Code">
-            <i class="codicon codicon-window" aria-hidden="true" />
-            <span>Open in VS Code</span>
-          </button>
           <button
             type="button"
             aria-label="Toggle Details"
@@ -100,9 +350,13 @@ function toggleAgentMerge() {
           <header class="sessions-header">
             <h3>Sessions</h3>
             <div class="sessions-header-actions">
-              <button class="new-session-button" type="button">
-                <i class="codicon codicon-add" aria-hidden="true" />
-                New
+              <button
+                class="new-session-button"
+                type="button"
+                aria-label="New Session, Command N"
+              >
+                <span class="new-session-label">New</span>
+                <kbd class="new-session-shortcut" aria-hidden="true">⌘ N</kbd>
               </button>
               <button type="button" aria-label="Search Sessions">
                 <i class="codicon codicon-search" aria-hidden="true" />
@@ -117,42 +371,91 @@ function toggleAgentMerge() {
             <section aria-labelledby="workspace-sessions-title">
               <h4 id="workspace-sessions-title" class="session-group-heading">
                 <i class="codicon codicon-chevron-down" aria-hidden="true" />
-                vscode
+                {{ projectName }}
               </h4>
-              <button
+              <div
                 v-for="session in scenarios"
                 :key="session.id"
-                class="session-item"
-                :class="{ active: session.id === scenario.id }"
-                type="button"
-                :data-session-id="session.id"
-                :aria-current="session.id === scenario.id ? 'page' : undefined"
-                @click="emit('select:scenario', session.id)"
+                class="session-item-container"
+                :class="{
+                  'showing-status-overlay':
+                    inactiveSessionStatusId === session.id,
+                }"
+                @mouseenter="showInactiveSessionStatus($event, session)"
+                @mouseleave="hideInactiveSessionStatus"
+                @focusin="showInactiveSessionStatus($event, session)"
+                @focusout="hideInactiveSessionStatus"
               >
-                <span class="session-status-icon">
-                  <i
-                    class="codicon"
-                    :class="
-                      session.agentMerge.enabled
-                        ? 'codicon-git-merge'
-                        : 'codicon-git-pull-request'
-                    "
-                    aria-hidden="true"
-                  />
-                </span>
-                <span class="session-main">
-                  <span class="session-title-row">
-                    <strong>{{ session.title }}</strong>
-                    <time>{{ session.relativeTime }}</time>
+                <button
+                  class="session-item"
+                  :class="{ active: session.id === scenario.id }"
+                  type="button"
+                  :data-session-id="session.id"
+                  :data-agent-merge-state="
+                    sessionSummaries[session.id].pullRequestCreated
+                      ? sessionSummaries[session.id].agentMergeStatus.kind
+                      : undefined
+                  "
+                  :data-repository-state="
+                    sessionSummaries[session.id].repositoryState
+                  "
+                  :aria-current="
+                    session.id === scenario.id ? 'page' : undefined
+                  "
+                  :aria-haspopup="
+                    canShowInactiveSessionStatus(session)
+                      ? 'dialog'
+                      : undefined
+                  "
+                  :aria-expanded="
+                    canShowInactiveSessionStatus(session)
+                      ? inactiveSessionStatusId === session.id
+                      : undefined
+                  "
+                  @click="emit('select:scenario', session.id)"
+                >
+                  <span
+                    class="session-status-icon"
+                    :class="`status-${getSessionListState(session).kind}`"
+                  >
+                    <i
+                      class="codicon"
+                      :class="getSessionListState(session).icon"
+                      aria-hidden="true"
+                    />
                   </span>
-                  <span class="session-details-row">
-                    <i class="codicon codicon-git-pull-request" aria-hidden="true" />
-                    #{{ session.pullRequestNumber }}
-                    <span aria-hidden="true">·</span>
-                    {{ session.agentMergeLabel }}
+                  <span class="session-main">
+                    <span class="session-title-row">
+                      <strong>{{ session.title }}</strong>
+                    </span>
+                    <span class="session-details-row">
+                      <span class="session-state-label">
+                        {{ getSessionListState(session).label }}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <time>{{ session.relativeTime }}</time>
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                <AgentMergeStatusWidget
+                  v-if="
+                    inactiveSessionStatusId === session.id &&
+                    canShowInactiveSessionStatus(session)
+                  "
+                  class="session-status-hover-widget"
+                  :style="inactiveSessionStatusPosition"
+                  :status="sessionSummaries[session.id].agentMergeStatus"
+                  :scenario="session"
+                  :settings="sessionSummaries[session.id].settings"
+                  :handling-variant="handlingVariant"
+                  :pull-request-details="
+                    sessionSummaries[session.id].pullRequestDetails
+                  "
+                  overlay-only
+                  preview-only
+                  @close="closeInactiveSessionStatus"
+                />
+              </div>
             </section>
           </div>
 
@@ -161,7 +464,11 @@ function toggleAgentMerge() {
         <div class="agents-main-region">
           <section class="sessions-part agents-part-card" aria-label="Active session">
             <header class="session-header">
-              <i class="codicon codicon-git-merge" aria-hidden="true" />
+              <i
+                class="codicon"
+                :class="pullRequestCreated ? 'codicon-git-merge' : 'codicon-check'"
+                aria-hidden="true"
+              />
               <strong :title="scenario.title">{{ scenario.title }}</strong>
               <div class="session-header-actions">
                 <button type="button" aria-label="Split Chat">
@@ -179,53 +486,95 @@ function toggleAgentMerge() {
                   <p>{{ scenario.request }}</p>
                 </article>
 
-                <article class="chat-response">
-                  <div class="response-heading">
-                    <i class="codicon codicon-copilot" aria-hidden="true" />
-                    <strong>GitHub Copilot</strong>
-                  </div>
-                  <p>
-                    Pull request
-                    <a :href="scenario.pullRequestUrl" target="_blank" rel="noreferrer">
-                      #{{ scenario.pullRequestNumber }}
-                    </a>
-                    is open for <code>{{ scenario.branch }}</code>.
+                <article class="chat-response" aria-label="Agent response">
+                  <p>{{ scenario.completion }}</p>
+                  <p
+                    v-if="prePullRequestAction.opensPullRequest"
+                    class="repository-action-question"
+                  >
+                    {{ prePullRequestAction.chatPrompt }}
+                  </p>
+                  <button
+                    v-if="
+                      !pullRequestCreated &&
+                      prePullRequestAction.opensPullRequest
+                    "
+                    class="repository-action"
+                    type="button"
+                    :data-repository-action="prePullRequestAction.kind"
+                    @click="openCreatePullRequestDialog"
+                  >
+                    <i
+                      class="codicon"
+                      :class="prePullRequestAction.icon"
+                      aria-hidden="true"
+                    />
+                    {{ prePullRequestAction.label }}
+                  </button>
+                </article>
+
+                <article
+                  v-if="pullRequestCreated"
+                  ref="pullRequestCreatedMessage"
+                  class="chat-response pull-request-created-message"
+                  aria-label="Agent response"
+                  tabindex="-1"
+                >
+                  <p class="pull-request-created-status">
+                    <i
+                      class="codicon codicon-git-pull-request"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      Created pull request
+                      <a :href="scenario.pullRequestUrl" target="_blank" rel="noreferrer">
+                        #{{ scenario.pullRequestNumber }}
+                      </a>
+                      from <code>{{ scenario.branch }}</code> into
+                      <code>{{ pullRequestDetails.baseBranch }}</code>.
+                    </span>
                   </p>
                 </article>
 
-                <article v-if="settings.enabled" class="system-notice">
-                  <i class="codicon codicon-git-merge" aria-hidden="true" />
+                <article
+                  v-if="pullRequestCreated && !settings.enabled"
+                  class="agent-merge-session-status"
+                  :class="`status-${agentMergeStatus.kind}`"
+                  data-agent-merge-surface="session"
+                  :data-agent-merge-state="agentMergeStatus.kind"
+                >
+                  <i
+                    class="codicon"
+                    :class="agentMergeStatusIcon"
+                    aria-hidden="true"
+                  />
                   <div>
-                    <strong>Agent Merge is monitoring this pull request.</strong>
-                    <p>
-                      It may handle
-                      {{
-                        authorizedActions.length
-                          ? authorizedActions.join(', ')
-                          : 'no repair actions'
-                      }}.
-                      {{ mergePolicy }}.
-                    </p>
+                    <div class="agent-merge-session-status-heading">
+                      <strong
+                        data-agent-merge-status-label
+                        :aria-label="`Agent Merge status: ${agentMergeStatus.label}`"
+                        :title="agentMergeStatus.label"
+                      >
+                        {{ agentMergeStatus.label }}
+                      </strong>
+                      <span aria-hidden="true">Agent Merge</span>
+                    </div>
+                    <p>{{ agentMergePolicyDescription }}</p>
                   </div>
                 </article>
 
-                <AgentMergeCard v-if="settings.enabled" :scenario="scenario" />
+                <AgentMergeCard
+                  v-if="pullRequestCreated && settings.enabled"
+                  :scenario="pullRequestScenario"
+                  :activity="agentMergeStatus"
+                  :policy-description="agentMergePolicyDescription"
+                />
 
-                <article v-else class="agent-merge-disabled-note">
-                  <i class="codicon codicon-circle-slash" aria-hidden="true" />
-                  <div>
-                    <strong>Agent Merge is off for this session.</strong>
-                    <p>
-                      The pull request still reports blockers, but no repair turn will start.
-                    </p>
-                  </div>
-                </article>
-
-                <article v-if="settings.enabled" class="chat-response latest-response">
-                  <div class="response-heading">
-                    <i class="codicon codicon-copilot" aria-hidden="true" />
-                    <strong>GitHub Copilot</strong>
-                  </div>
+                <article
+                  v-if="pullRequestCreated && settings.enabled"
+                  class="chat-response latest-response"
+                  aria-label="Agent response"
+                >
                   <p>{{ scenario.response }}</p>
                 </article>
               </div>
@@ -245,7 +594,10 @@ function toggleAgentMerge() {
             </div>
           </section>
 
-          <aside class="changes-part agents-part-card" aria-label="Pull request changes">
+          <aside
+            class="changes-part agents-part-card"
+            :aria-label="pullRequestCreated ? 'Pull request changes' : 'Feature changes'"
+          >
             <div class="pane-title">
               <span>Changes</span>
               <div>
@@ -259,44 +611,107 @@ function toggleAgentMerge() {
             </div>
             <div class="pull-request-summary">
               <div class="pull-request-heading">
-                <i class="codicon codicon-git-pull-request" aria-hidden="true" />
-                <div>
-                  <strong>#{{ scenario.pullRequestNumber }}</strong>
-                  <span>{{ scenario.baseBranch }} ← {{ scenario.branch }}</span>
-                </div>
-              </div>
-              <div class="pull-request-status">
                 <i
                   class="codicon"
                   :class="
-                    status === 'No Pending Feedback'
-                      ? 'codicon-pass-filled'
-                      : 'codicon-warning'
+                    pullRequestCreated
+                      ? 'codicon-git-pull-request'
+                      : 'codicon-git-branch'
                   "
                   aria-hidden="true"
                 />
-                <span>{{ status }}</span>
+                <div>
+                  <strong>
+                    {{
+                      pullRequestCreated
+                        ? `#${scenario.pullRequestNumber}`
+                        : scenario.branch
+                    }}
+                  </strong>
+                  <span v-if="pullRequestCreated">
+                    {{ `${pullRequestDetails.baseBranch} ← ${scenario.branch}` }}
+                  </span>
+                </div>
               </div>
               <button
-                class="workbench-agent-merge-toggle"
+                v-if="!pullRequestCreated"
+                class="changes-repository-action"
                 type="button"
-                :aria-pressed="settings.enabled"
-                @click="toggleAgentMerge"
+                :data-repository-action="prePullRequestAction.kind"
+                @click="runRepositoryAction"
               >
-                <i class="codicon codicon-git-merge" aria-hidden="true" />
-                {{ settings.enabled ? 'Disable Agent Merge' : 'Enable Agent Merge' }}
+                <i
+                  class="codicon"
+                  :class="prePullRequestAction.icon"
+                  aria-hidden="true"
+                />
+                {{ prePullRequestAction.label }}
+              </button>
+              <button
+                v-else-if="showChangesPullRequestSettings"
+                ref="agentMergeSettingsTrigger"
+                class="workbench-agent-merge-settings"
+                type="button"
+                aria-haspopup="dialog"
+                :aria-expanded="showingAgentMergeSettingsDialog"
+                :aria-label="`${
+                  settings.enabled
+                    ? 'Update Agent Merge settings'
+                    : 'Configure Agent Merge'
+                } for this session`"
+                @click="openAgentMergeSettings"
+              >
+                <i class="codicon codicon-settings-gear" aria-hidden="true" />
+                {{
+                  settings.enabled
+                    ? 'Update Agent Merge Settings'
+                    : 'Configure Agent Merge'
+                }}
               </button>
             </div>
             <div class="changes-list">
               <div v-for="file in scenario.changedFiles" :key="file.name">
                 <i class="codicon codicon-file-code" aria-hidden="true" />
                 <span>{{ file.name }}</span>
-                <span class="change-count">{{ file.changeCount }}</span>
+                <span
+                  class="change-count"
+                  :aria-label="getChangeCountLabel(file)"
+                >
+                  <span class="change-count-additions" aria-hidden="true">
+                    +{{ file.additions }}
+                  </span>
+                  <span class="change-count-deletions" aria-hidden="true">
+                    −{{ file.deletions }}
+                  </span>
+                </span>
               </div>
             </div>
           </aside>
         </div>
       </div>
+
+      <CreatePullRequestDialog
+        v-if="showingCreatePullRequestDialog"
+        :pull-request-details="pullRequestDetails"
+        :scenario="scenario"
+        :settings="settings"
+        :handling-variant="handlingVariant"
+        @cancel="cancelCreatePullRequest"
+        @create="createPullRequest"
+      />
+      <CreatePullRequestDialog
+        v-if="
+          showingAgentMergeSettingsDialog &&
+          showChangesPullRequestSettings
+        "
+        :pull-request-details="pullRequestDetails"
+        :scenario="scenario"
+        :settings="settings"
+        :handling-variant="handlingVariant"
+        settings-only
+        @cancel="closeAgentMergeSettings"
+        @save="saveAgentMergeSettings"
+      />
     </div>
   </section>
 </template>
@@ -325,12 +740,15 @@ function toggleAgentMerge() {
 }
 
 .agents-window-frame {
+  position: relative;
   display: grid;
   grid-template-rows: 35px minmax(0, 1fr);
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   color: var(--vscode-foreground);
+  font-size: var(--vscode-fontSize-body1);
+  line-height: 1.4;
   background:
     radial-gradient(
       ellipse 125% 105% at 100% 100%,
@@ -346,6 +764,8 @@ function toggleAgentMerge() {
 }
 
 .agents-window-titlebar {
+  position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -410,7 +830,9 @@ function toggleAgentMerge() {
 .pane-title button:focus-visible,
 .session-item:focus-visible,
 .chat-input input:focus-visible,
-.workbench-agent-merge-toggle:focus-visible {
+.repository-action:focus-visible,
+.changes-repository-action:focus-visible,
+.workbench-agent-merge-settings:focus-visible {
   outline: var(--vscode-strokeThickness) solid var(--vscode-focusBorder);
   outline-offset: calc(-1 * var(--vscode-strokeThickness));
 }
@@ -419,47 +841,83 @@ function toggleAgentMerge() {
   min-width: 0;
 }
 
-.agents-window-titlebar .session-picker {
+.command-center {
+  position: relative;
   display: flex;
-  width: min(31vw, 600px);
+  align-items: stretch;
+  width: min(42vw, 680px);
+  height: var(--prototype-button-height);
   min-width: 180px;
-  padding: 0 var(--vscode-spacing-size80);
   color: var(--vscode-commandCenter-foreground);
   border: var(--vscode-strokeThickness) solid var(--vscode-commandCenter-border);
   border-radius: var(--vscode-cornerRadius-medium);
-  opacity: 0.7;
+  font-size: var(--vscode-fontSize-label1);
 }
 
-.agents-window-titlebar .session-picker:hover {
+.command-center:hover,
+.command-center:focus-within {
   color: var(--vscode-commandCenter-activeForeground);
   background: var(--vscode-commandCenter-activeBackground);
   border-color: var(--vscode-commandCenter-activeBorder);
-  opacity: 1;
 }
 
-.session-picker > .codicon {
+.agents-window-titlebar .project-picker {
+  display: flex;
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--vscode-spacing-size80);
+  color: inherit;
+  border: 0;
+  border-radius: var(--vscode-cornerRadius-medium) 0 0
+    var(--vscode-cornerRadius-medium);
+  text-align: left;
+}
+
+.agents-window-titlebar .project-picker:hover {
+  color: var(--vscode-commandCenter-activeForeground);
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.project-picker > .codicon {
   flex: 0 0 auto;
   margin-right: var(--vscode-spacing-size60);
   font-size: var(--vscode-codiconFontSize-compact);
 }
 
-.session-picker > span {
+.project-picker-title {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.agents-window-titlebar .open-in-vscode {
-  gap: var(--vscode-spacing-size40);
-  padding: 0 var(--vscode-spacing-size80);
+.session-status-icon.status-working {
+  color: var(--vscode-textLink-foreground);
 }
 
-.open-in-vscode span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--vscode-fontSize-label2);
+.session-status-icon.status-monitoring {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.session-status-icon.status-disabled,
+.agent-merge-session-status.status-disabled > .codicon {
+  color: var(--vscode-disabledForeground);
+}
+
+.session-status-icon.status-commit {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.session-status-icon.status-publish {
+  color: var(--vscode-descriptionForeground);
+}
+
+.session-status-icon.status-create-pull-request {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
 }
 
 .agents-window-content {
@@ -504,12 +962,27 @@ function toggleAgentMerge() {
 
 .sessions-header .new-session-button {
   width: auto;
-  gap: var(--vscode-spacing-size20);
-  padding: 0 var(--vscode-spacing-size80);
+  gap: var(--vscode-spacing-size60);
+  padding: 0 var(--vscode-spacing-size60);
   color: var(--vscode-agentsNewSessionButton-foreground);
   background: var(--vscode-agentsNewSessionButton-background);
   border: var(--vscode-strokeThickness) solid
     var(--vscode-agentsNewSessionButton-border);
+  font-size: var(--vscode-fontSize-label1);
+}
+
+.new-session-shortcut {
+  display: inline-flex;
+  align-items: center;
+  height: var(--vscode-spacing-size160);
+  padding: 0 var(--vscode-spacing-size20);
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-toolbar-activeBackground);
+  border-radius: var(--vscode-cornerRadius-xSmall);
+  font-family: inherit;
+  font-size: var(--vscode-fontSize-label3);
+  font-weight: var(--vscode-fontWeight-regular);
+  line-height: 1;
 }
 
 .sessions-header .new-session-button:hover {
@@ -531,14 +1004,16 @@ function toggleAgentMerge() {
   margin: var(--vscode-spacing-size40) 0 0;
   padding: 0 var(--vscode-spacing-size80);
   color: var(--vscode-sideBarSectionHeader-foreground);
-  font-size: var(--vscode-fontSize-body2);
+  font-size: var(--vscode-fontSize-label1);
   font-weight: var(--vscode-fontWeight-semiBold);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .session-group-heading > .codicon {
   font-size: var(--vscode-codiconFontSize-compact);
+}
+
+.session-item-container {
+  position: relative;
 }
 
 .session-item {
@@ -557,6 +1032,10 @@ function toggleAgentMerge() {
 }
 
 .session-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.session-item-container.showing-status-overlay > .session-item {
   background: var(--vscode-list-hoverBackground);
 }
 
@@ -611,28 +1090,25 @@ function toggleAgentMerge() {
   font-weight: var(--vscode-fontWeight-regular);
 }
 
-.session-title-row time,
 .session-details-row {
   color: var(--vscode-descriptionForeground);
   font-size: var(--vscode-fontSize-label2);
 }
 
-.session-title-row time {
+.session-details-row time {
   flex: 0 0 auto;
 }
 
 .session-details-row {
   gap: var(--vscode-spacing-size40);
-  overflow: hidden;
   line-height: 15px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.session-details-row .codicon {
-  flex: 0 0 auto;
-  color: var(--vscode-gitDecoration-addedResourceForeground);
-  font-size: var(--vscode-codiconFontSize-compact);
+.session-state-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agents-main-region {
@@ -739,17 +1215,6 @@ function toggleAgentMerge() {
   max-width: min(88%, 560px);
 }
 
-.response-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--vscode-spacing-size60);
-}
-
-.response-heading strong {
-  font-size: var(--vscode-fontSize-label1);
-  font-weight: var(--vscode-fontWeight-semiBold);
-}
-
 .chat-response a {
   color: var(--vscode-textLink-foreground);
 }
@@ -761,8 +1226,49 @@ function toggleAgentMerge() {
   border-radius: var(--vscode-cornerRadius-xSmall);
 }
 
-.system-notice,
-.agent-merge-disabled-note {
+.repository-action-question {
+  margin-top: var(--vscode-spacing-size40);
+  color: var(--vscode-foreground);
+  font-weight: var(--vscode-fontWeight-semiBold);
+}
+
+.repository-action {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--vscode-spacing-size60);
+  min-height: var(--vscode-spacing-size240);
+  margin-top: var(--vscode-spacing-size40);
+  padding: 0 var(--vscode-spacing-size80);
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  border: var(--vscode-strokeThickness) solid var(--vscode-button-border);
+  border-radius: var(--vscode-cornerRadius-small);
+  font-size: var(--vscode-fontSize-label1);
+  cursor: pointer;
+}
+
+.repository-action > .codicon {
+  font-size: var(--vscode-codiconFontSize-compact);
+}
+
+.repository-action:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.pull-request-created-status {
+  display: flex;
+  align-items: center;
+  gap: var(--vscode-spacing-size60);
+}
+
+.pull-request-created-status > .codicon {
+  flex: 0 0 auto;
+  color: var(--vscode-icon-foreground);
+  font-size: var(--vscode-codiconFontSize);
+}
+
+.agent-merge-session-status {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: var(--vscode-spacing-size80);
@@ -773,20 +1279,34 @@ function toggleAgentMerge() {
   border-radius: var(--vscode-cornerRadius-medium);
 }
 
-.system-notice > .codicon,
-.agent-merge-disabled-note > .codicon {
+.agent-merge-session-status > .codicon {
   margin-top: var(--vscode-spacing-size20);
   color: var(--vscode-descriptionForeground);
   font-size: var(--vscode-codiconFontSize);
 }
 
-.system-notice strong,
-.agent-merge-disabled-note strong {
+.agent-merge-session-status-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vscode-spacing-size60);
+  min-width: 0;
+}
+
+.agent-merge-session-status-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: var(--vscode-fontWeight-semiBold);
 }
 
-.system-notice p,
-.agent-merge-disabled-note p {
+.agent-merge-session-status-heading > span {
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--vscode-fontSize-body2);
+}
+
+.agent-merge-session-status p {
   margin-top: var(--vscode-spacing-size40);
   color: var(--vscode-descriptionForeground);
   font-size: var(--vscode-fontSize-body2);
@@ -864,7 +1384,8 @@ function toggleAgentMerge() {
   height: var(--vscode-spacing-size320);
   padding: 0 var(--vscode-spacing-size80) 0 var(--vscode-spacing-size120);
   color: var(--vscode-sideBarTitle-foreground);
-  font-size: var(--vscode-fontSize-label3);
+  font-size: var(--vscode-fontSize-label2);
+  font-weight: var(--vscode-fontWeight-semiBold);
   text-transform: uppercase;
 }
 
@@ -895,7 +1416,7 @@ function toggleAgentMerge() {
 .pull-request-heading > .codicon {
   flex: 0 0 auto;
   margin-top: var(--vscode-spacing-size20);
-  color: var(--vscode-gitDecoration-addedResourceForeground);
+  color: var(--vscode-descriptionForeground);
 }
 
 .pull-request-heading > div {
@@ -917,46 +1438,33 @@ function toggleAgentMerge() {
   font-size: var(--vscode-fontSize-body2);
 }
 
-.pull-request-status {
-  display: flex;
-  align-items: center;
-  gap: var(--vscode-spacing-size60);
-  min-width: 0;
-  color: var(--vscode-descriptionForeground);
-  font-size: var(--vscode-fontSize-label2);
-}
-
-.pull-request-status span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pull-request-status .codicon-pass-filled {
-  color: var(--vscode-testing-iconPassed);
-}
-
-.pull-request-status .codicon-warning {
-  color: var(--vscode-warningForeground);
-}
-
-.workbench-agent-merge-toggle {
+.changes-repository-action,
+.workbench-agent-merge-settings {
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: flex-start;
   gap: var(--vscode-spacing-size60);
-  min-height: var(--prototype-button-height);
-  padding: 0 var(--vscode-spacing-size100);
+  margin-left: calc(
+    var(--vscode-codiconFontSize) + var(--vscode-spacing-size80)
+  );
+  min-height: var(--vscode-spacing-size240);
+  padding: 0 var(--vscode-spacing-size80);
   color: var(--vscode-button-foreground);
   background: var(--vscode-button-background);
   border: var(--vscode-strokeThickness) solid var(--vscode-button-border);
   border-radius: var(--vscode-cornerRadius-small);
-  font: inherit;
+  font-size: var(--vscode-fontSize-label1);
   cursor: pointer;
 }
 
-.workbench-agent-merge-toggle:hover {
+.changes-repository-action > .codicon,
+.workbench-agent-merge-settings > .codicon {
+  font-size: var(--vscode-codiconFontSize-compact);
+}
+
+.changes-repository-action:hover,
+.workbench-agent-merge-settings:hover {
   background: var(--vscode-button-hoverBackground);
 }
 
@@ -985,8 +1493,17 @@ function toggleAgentMerge() {
 }
 
 .change-count {
-  color: var(--vscode-gitDecoration-addedResourceForeground);
+  display: inline-flex;
+  gap: var(--vscode-spacing-size40);
   font-size: var(--vscode-fontSize-body2);
+}
+
+.change-count-additions {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.change-count-deletions {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
 }
 
 @media (max-width: 1180px) {
@@ -1002,10 +1519,6 @@ function toggleAgentMerge() {
 @media (max-width: 960px) {
   .agents-window-content {
     grid-template-columns: 190px minmax(0, 1fr);
-  }
-
-  .open-in-vscode span {
-    display: none;
   }
 }
 
@@ -1031,8 +1544,7 @@ function toggleAgentMerge() {
   }
 
   .traffic-lights,
-  .titlebar-left button:not(:first-of-type),
-  .open-in-vscode {
+  .titlebar-left button:not(:first-of-type) {
     display: none;
   }
 
@@ -1040,8 +1552,12 @@ function toggleAgentMerge() {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .agents-window-titlebar .session-picker {
+  .command-center {
     width: 100%;
+    min-width: 0;
+  }
+
+  .agents-window-titlebar .project-picker {
     min-width: 0;
   }
 }

@@ -7,14 +7,23 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  activity: {
+    type: Object,
+    required: true,
+  },
+  policyDescription: {
+    type: String,
+    required: true,
+  },
 })
 
-const expanded = ref(true)
+const expanded = ref(false)
 const showingAgentMessage = ref(false)
 const bodyId = `agent-merge-body-${useId()}`
-const status = computed(() => formatAgentMergeStatus(props.scenario))
+const feedbackSummary = computed(() => formatAgentMergeStatus(props.scenario))
 const disclosureLabel = computed(
-  () => `${expanded.value ? 'Collapse' : 'Expand'} Agent Merge details: ${status.value}`,
+  () =>
+    `${expanded.value ? 'Collapse' : 'Expand'} Agent Merge details: ${props.activity.label}. ${feedbackSummary.value}`,
 )
 const messageToggleLabel = computed(() =>
   showingAgentMessage.value ? 'Show merge details' : 'Show agent message',
@@ -23,7 +32,7 @@ const messageToggleLabel = computed(() =>
 watch(
   () => props.scenario.id,
   () => {
-    expanded.value = true
+    expanded.value = false
     showingAgentMessage.value = false
   },
 )
@@ -45,7 +54,9 @@ function collapse() {
       collapsed: !expanded,
       'showing-agent-message': showingAgentMessage,
     }"
-    :aria-label="`Agent Merge: ${status}`"
+    :aria-label="`Agent Merge: ${activity.label}. ${feedbackSummary}`"
+    data-agent-merge-surface="session"
+    :data-agent-merge-state="activity.kind"
     @keydown.esc="collapse"
   >
     <div class="agent-merge-card">
@@ -59,8 +70,17 @@ function collapse() {
           @click="toggleExpanded"
         />
         <div class="agent-merge-header-content" aria-hidden="true">
-          <span class="agent-merge-title">{{ status }}</span>
-          <span class="agent-merge-source">Agent Merge</span>
+          <i
+            class="agent-merge-state-icon codicon codicon-git-merge"
+            :class="`status-${activity.kind}`"
+          />
+          <span
+            class="agent-merge-title"
+            data-agent-merge-status-label
+            :aria-label="`Agent Merge status: ${activity.label}`"
+          >
+            {{ activity.label }}
+          </span>
         </div>
         <button
           v-if="expanded"
@@ -78,6 +98,8 @@ function collapse() {
 
       <div v-if="expanded" :id="bodyId" class="agent-merge-body">
         <div v-if="!showingAgentMessage" class="agent-merge-details">
+          <p class="agent-merge-policy">{{ policyDescription }}</p>
+
           <a
             class="pull-request-pill"
             :href="scenario.pullRequestUrl"
@@ -233,7 +255,22 @@ time:focus-visible {
   align-items: center;
   flex: 0 1 auto;
   min-width: 0;
+  gap: var(--vscode-spacing-size60);
   pointer-events: none;
+}
+
+.agent-merge-state-icon {
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--vscode-codiconFontSize-compact);
+}
+
+.agent-merge-state-icon.status-working {
+  color: var(--vscode-textLink-foreground);
+}
+
+.agent-merge-state-icon.status-monitoring {
+  color: var(--vscode-testing-iconPassed);
 }
 
 .agent-merge-title {
@@ -243,12 +280,6 @@ time:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: var(--vscode-fontWeight-semiBold);
-}
-
-.agent-merge-source {
-  flex: 0 0 auto;
-  margin-left: var(--vscode-spacing-size60);
-  color: var(--vscode-descriptionForeground);
 }
 
 .agent-merge-message-toggle {
@@ -304,6 +335,12 @@ time:focus-visible {
   flex-direction: column;
   gap: var(--vscode-spacing-size120);
   min-width: 0;
+}
+
+.agent-merge-policy {
+  margin: 0;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.45;
 }
 
 .pull-request-pill {

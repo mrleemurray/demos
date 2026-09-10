@@ -16,6 +16,7 @@
   --vscode-spacing-size240: 24px;
   --vscode-spacing-size280: 28px;
   --vscode-spacing-size320: 32px;
+  --vscode-spacing-size360: 36px;
 
   --vscode-cornerRadius-xSmall: 2px;
   --vscode-cornerRadius-small: 4px;
@@ -57,23 +58,30 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 .sessions-list::-webkit-scrollbar,
-.chat-transcript::-webkit-scrollbar {
+.chat-transcript::-webkit-scrollbar,
+.create-pr-dialog-body::-webkit-scrollbar,
+.agent-merge-status-overlay::-webkit-scrollbar {
   width: var(--vscode-spacing-size100);
   height: var(--vscode-spacing-size100);
 }
 
 .sessions-list::-webkit-scrollbar-track,
-.chat-transcript::-webkit-scrollbar-track {
+.chat-transcript::-webkit-scrollbar-track,
+.create-pr-dialog-body::-webkit-scrollbar-track,
+.agent-merge-status-overlay::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .sessions-list::-webkit-scrollbar-thumb,
-.chat-transcript::-webkit-scrollbar-thumb {
+.chat-transcript::-webkit-scrollbar-thumb,
+.create-pr-dialog-body::-webkit-scrollbar-thumb,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb {
   min-height: var(--vscode-spacing-size200);
   background: var(--vscode-scrollbarSlider-background);
   background-clip: padding-box;
@@ -82,25 +90,33 @@ select {
 }
 
 .sessions-list::-webkit-scrollbar-thumb:hover,
-.chat-transcript::-webkit-scrollbar-thumb:hover {
+.chat-transcript::-webkit-scrollbar-thumb:hover,
+.create-pr-dialog-body::-webkit-scrollbar-thumb:hover,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb:hover {
   background: var(--vscode-scrollbarSlider-hoverBackground);
   background-clip: padding-box;
 }
 
 .sessions-list::-webkit-scrollbar-thumb:active,
-.chat-transcript::-webkit-scrollbar-thumb:active {
+.chat-transcript::-webkit-scrollbar-thumb:active,
+.create-pr-dialog-body::-webkit-scrollbar-thumb:active,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb:active {
   background: var(--vscode-scrollbarSlider-activeBackground);
   background-clip: padding-box;
 }
 
 .sessions-list::-webkit-scrollbar-corner,
-.chat-transcript::-webkit-scrollbar-corner {
+.chat-transcript::-webkit-scrollbar-corner,
+.create-pr-dialog-body::-webkit-scrollbar-corner,
+.agent-merge-status-overlay::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 @supports not selector(::-webkit-scrollbar) {
   .sessions-list,
-  .chat-transcript {
+  .chat-transcript,
+  .create-pr-dialog-body,
+  .agent-merge-status-overlay {
     scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
     scrollbar-width: thin;
   }
@@ -165,6 +181,9 @@ select {
   --vscode-input-background: #202020;
   --vscode-input-border: #454545;
   --vscode-input-placeholderForeground: #858585;
+  --vscode-checkbox-background: #3c3c3c;
+  --vscode-checkbox-foreground: #f0f0f0;
+  --vscode-checkbox-border: #3c3c3c;
   --vscode-button-background: #0e639c;
   --vscode-button-foreground: #ffffff;
   --vscode-button-border: transparent;
@@ -180,6 +199,8 @@ select {
   --vscode-warningForeground: #cca700;
   --vscode-testing-iconPassed: #73c991;
   --vscode-gitDecoration-addedResourceForeground: #81b88b;
+  --vscode-gitDecoration-deletedResourceForeground: #c74e39;
+  --vscode-gitDecoration-modifiedResourceForeground: #e2c08d;
   --vscode-statusBar-background: #181818;
   --vscode-statusBar-foreground: #ffffff;
   --vscode-statusBar-border: #2b2b2b;
@@ -260,6 +281,9 @@ select {
   --vscode-input-background: #ffffff;
   --vscode-input-border: #cecece;
   --vscode-input-placeholderForeground: #767676;
+  --vscode-checkbox-background: #f3f3f3;
+  --vscode-checkbox-foreground: #616161;
+  --vscode-checkbox-border: #cecece;
   --vscode-button-background: #0078d4;
   --vscode-button-foreground: #ffffff;
   --vscode-button-border: transparent;
@@ -275,6 +299,8 @@ select {
   --vscode-warningForeground: #bf8803;
   --vscode-testing-iconPassed: #388a34;
   --vscode-gitDecoration-addedResourceForeground: #587c0c;
+  --vscode-gitDecoration-deletedResourceForeground: #ad0707;
+  --vscode-gitDecoration-modifiedResourceForeground: #895503;
   --vscode-statusBar-background: #007acc;
   --vscode-statusBar-foreground: #ffffff;
   --vscode-statusBar-border: #007acc;
@@ -340,6 +366,9 @@ select {
   --vscode-input-background: #000000;
   --vscode-input-border: #ffffff;
   --vscode-input-placeholderForeground: #ffffff;
+  --vscode-checkbox-background: #000000;
+  --vscode-checkbox-foreground: #ffffff;
+  --vscode-checkbox-border: #ffffff;
   --vscode-button-background: #000000;
   --vscode-button-foreground: #ffffff;
   --vscode-button-border: #ffffff;
@@ -355,6 +384,8 @@ select {
   --vscode-warningForeground: #f38518;
   --vscode-testing-iconPassed: #00ff00;
   --vscode-gitDecoration-addedResourceForeground: #00ff00;
+  --vscode-gitDecoration-deletedResourceForeground: #ff0000;
+  --vscode-gitDecoration-modifiedResourceForeground: #ffff00;
   --vscode-statusBar-background: #000000;
   --vscode-statusBar-foreground: #ffffff;
   --vscode-statusBar-border: #ffffff;

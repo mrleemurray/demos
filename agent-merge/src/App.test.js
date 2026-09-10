@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { afterEach, suite, test } from 'vitest'
+import { afterEach, suite, test, vi } from 'vitest'
 import { createApp, nextTick } from 'vue'
 import App from './App.vue'
 
@@ -8,6 +8,7 @@ suite('Agent Merge lab', () => {
   let container
 
   afterEach(() => {
+    vi.useRealTimers()
     app?.unmount()
     container?.remove()
     app = undefined
@@ -31,164 +32,1639 @@ suite('Agent Merge lab', () => {
     return getElement(selector).textContent.replace(/\s+/g, ' ').trim()
   }
 
-  test('starts with an explorable Agent Merge state', () => {
+  async function openCreatePullRequestDialog(
+    triggerSelector = '.repository-action',
+  ) {
+    for (let actionCount = 0; actionCount < 2; actionCount++) {
+      if (getText('.changes-repository-action') === 'Create pull request') {
+        break
+      }
+      assert.ok(
+        ['Commit changes', 'Publish branch'].includes(
+          getText('.changes-repository-action'),
+        ),
+      )
+      getElement('.changes-repository-action').click()
+      await nextTick()
+      await nextTick()
+    }
+    assert.equal(getText('.changes-repository-action'), 'Create pull request')
+    const trigger = getElement(triggerSelector)
+    trigger.click()
+    await nextTick()
+    await nextTick()
+    return trigger
+  }
+
+  async function continueToHandlingStep() {
+    assert.equal(getText('.primary-button'), 'Continue')
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+  }
+
+  async function setFieldValue(selector, value, eventName = 'input') {
+    const field = getElement(selector)
+    field.value = value
+    field.dispatchEvent(new Event(eventName, { bubbles: true }))
+    await nextTick()
+  }
+
+  async function selectHandlingVariant(variant) {
+    getElement(`input[name="handlingVariant"][value="${variant}"]`).click()
+    await nextTick()
+    await nextTick()
+  }
+
+  function getAgentMergeDialogSettings() {
+    return {
+      mode: getElement('input[name="pullRequestMode"]:checked').value,
+      addressReviews: getElement('input[name="addressReviews"]').checked,
+      fixCI: getElement('input[name="fixCI"]').checked,
+      resolveConflicts: getElement('input[name="resolveConflicts"]').checked,
+      mergePullRequest: getElement('select[name="mergePullRequest"]').value,
+    }
+  }
+
+  function getAgentMergeSurfaceStatus() {
+    const commandCenterTrigger = getElement('.agent-merge-status-trigger')
+    const sessionItem = getElement('.session-item[aria-current="page"]')
+    const sessionStatus = getElement('[data-agent-merge-surface="session"]')
+    const sessionStatusLabel = getElement('[data-agent-merge-status-label]')
+
+    return {
+      commandCenter: {
+        label: getText('.command-center-status'),
+        state: commandCenterTrigger.getAttribute('data-agent-merge-state'),
+        accessibleLabel: commandCenterTrigger.getAttribute('aria-label'),
+      },
+      sessionList: {
+        label: getText(
+          '.session-item[aria-current="page"] .session-details-row',
+        ),
+        state: sessionItem.getAttribute('data-agent-merge-state'),
+      },
+      session: {
+        label: getText('[data-agent-merge-status-label]'),
+        state: sessionStatus.getAttribute('data-agent-merge-state'),
+        accessibleLabel: sessionStatusLabel.getAttribute('aria-label'),
+      },
+    }
+  }
+
+  test('starts after feature completion and before pull request creation', () => {
     mountApp()
 
     assert.deepEqual(
       {
         theme: getElement('.prototype-app').getAttribute('data-theme'),
-        density: getElement('.prototype-app').getAttribute('data-density'),
-        externalControlPanel: Boolean(
-          container.querySelector('.prototype-controls'),
+        variantControls: {
+          selected: getElement('input[name="handlingVariant"]:checked').value,
+          options: Array.from(
+            container.querySelectorAll('.variant-switcher label'),
+            option => option.textContent.trim(),
+          ),
+          outsideWorkbench: !getElement('.prototype-layout').contains(
+            getElement('.prototype-variant-controls'),
+          ),
+        },
+        newButton: {
+          label: getText('.new-session-label'),
+          shortcut: getText('.new-session-shortcut'),
+          accessibleLabel: getElement(
+            '.new-session-button',
+          ).getAttribute('aria-label'),
+          iconCount: getElement('.new-session-button').querySelectorAll(
+            '.codicon',
+          ).length,
+        },
+        commandCenter: {
+          project: getText('.project-picker-title'),
+          accessibleLabel:
+            getElement('.project-picker').getAttribute('aria-label'),
+          openInVSCodePresent: Boolean(
+            container.querySelector('[aria-label="Open in VS Code"]'),
+          ),
+        },
+        request: getText('.chat-request'),
+        completion: getText('.chat-response > p:first-of-type'),
+        responseLabel: getElement('.chat-response').getAttribute('aria-label'),
+        agentAuthorRows: container.querySelectorAll('.response-heading').length,
+        chatRepositoryAction: Boolean(
+          container.querySelector('.repository-action'),
         ),
-        shellCount: getElement('.prototype-layout').children.length,
-        status: getElement('.agent-merge').getAttribute('aria-label'),
-        previewToggle: getElement('.workbench-agent-merge-toggle').getAttribute(
-          'aria-pressed',
+        pullRequestMentioned: container.textContent.includes('#333964'),
+        agentMergeCard: Boolean(container.querySelector('.agent-merge')),
+        agentMergeSettingsAction: Boolean(
+          container.querySelector('.workbench-agent-merge-settings'),
         ),
-        policy: getText('.system-notice p'),
         sessions: {
           count: container.querySelectorAll('[data-session-id]').length,
           active: getText('.session-item[aria-current="page"] strong'),
-        },
-        titlebarSession: getElement('.session-picker span').textContent,
-        sidebarHeading: getElement('.sessions-header h3').textContent,
-        shellParts: {
-          prototypeHeader: Boolean(container.querySelector('.prototype-header')),
-          stageHeading: Boolean(container.querySelector('.stage-heading')),
-          previewLabel: getElement('.prototype-stage').getAttribute('aria-label'),
-          sessionsPart: Boolean(container.querySelector('.sessions-part')),
-          changesPart: Boolean(container.querySelector('.changes-part')),
-          customizations: Boolean(container.querySelector('.customizations')),
-          agentHostStatus: Boolean(
-            container.querySelector('.sessions-sidebar-footer'),
+          state: getText(
+            '.session-item[aria-current="page"] .session-details-row',
           ),
-          activityBar: Boolean(container.querySelector('.activity-bar')),
-          statusBar: Boolean(container.querySelector('.statusbar')),
+          iconCounts: Array.from(
+            container.querySelectorAll('[data-session-id]'),
+            session => session.querySelectorAll('.codicon').length,
+          ),
         },
+        changes: {
+          branch: getText('.pull-request-heading strong'),
+          hasTarget: document.querySelector('.pull-request-heading span') !== null,
+          action: getText('.changes-repository-action'),
+          label: getElement('.changes-part').getAttribute('aria-label'),
+        },
+        announcement: getElement('[aria-live="polite"]').textContent,
       },
       {
         theme: 'dark',
-        density: 'comfortable',
-        externalControlPanel: false,
-        shellCount: 1,
-        status: 'Agent Merge: 1 Review Comment and 1 Failing Check',
-        previewToggle: 'true',
-        policy:
-          'It may handle reviews, CI, conflicts. Merge automatically when ready.',
+        variantControls: {
+          selected: 'permissions',
+          options: ['Permissions', 'Autonomy scale', 'Roles'],
+          outsideWorkbench: true,
+        },
+        newButton: {
+          label: 'New',
+          shortcut: '⌘ N',
+          accessibleLabel: 'New Session, Command N',
+          iconCount: 0,
+        },
+        commandCenter: {
+          project: 'vscode',
+          accessibleLabel: 'Show Workspace: vscode',
+          openInVSCodePresent: false,
+        },
+        request: 'Build the Agent Merge UX prototype.',
+        completion:
+          'I finished the Agent Merge UX prototype and added focused tests. Everything is ready for review.',
+        responseLabel: 'Agent response',
+        agentAuthorRows: 0,
+        chatRepositoryAction: false,
+        pullRequestMentioned: false,
+        agentMergeCard: false,
+        agentMergeSettingsAction: false,
         sessions: {
           count: 3,
           active: 'Prototype Agent Merge UX',
+          state: 'Changes ready to commit·now',
+          iconCounts: [1, 1, 1],
         },
-        titlebarSession: 'Prototype Agent Merge UX',
-        sidebarHeading: 'Sessions',
-        shellParts: {
-          prototypeHeader: false,
-          stageHeading: false,
-          previewLabel: 'Agent Merge preview',
-          sessionsPart: true,
-          changesPart: true,
-          customizations: false,
-          agentHostStatus: false,
-          activityBar: false,
-          statusBar: false,
+        changes: {
+          branch: 'prototype/agent-merge-ux',
+          hasTarget: false,
+          action: 'Commit changes',
+          label: 'Feature changes',
+        },
+        announcement:
+          'Previewing Prototype feature. Feature work is complete. Changes are ready to commit.',
+      },
+    )
+  })
+
+  test('progresses through commit, publish, and pull request readiness', async () => {
+    mountApp()
+
+    const getRepositoryState = () => ({
+      prompt: container.querySelector('.repository-action-question')
+        ?.textContent.replace(/\s+/g, ' ')
+        .trim(),
+      chatAction: container.querySelector('.repository-action')
+        ?.textContent.replace(/\s+/g, ' ')
+        .trim(),
+      changesAction: getText('.changes-repository-action'),
+      actionKind: getElement('.changes-repository-action').getAttribute(
+        'data-repository-action',
+      ),
+      sessionState: getText(
+        '.session-item[aria-current="page"] .session-details-row',
+      ),
+      sessionIcon: Array.from(
+        getElement(
+          '.session-item[aria-current="page"] .session-status-icon .codicon',
+        ).classList,
+      ).find(className => className !== 'codicon'),
+      dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+      announcement: getElement('[aria-live="polite"]').textContent,
+    })
+
+    const initial = getRepositoryState()
+    getElement('.changes-repository-action').click()
+    await nextTick()
+    await nextTick()
+    const committed = getRepositoryState()
+    getElement('.changes-repository-action').click()
+    await nextTick()
+    await nextTick()
+    const published = getRepositoryState()
+
+    assert.deepEqual(
+      { initial, committed, published },
+      {
+        initial: {
+          prompt: undefined,
+          chatAction: undefined,
+          changesAction: 'Commit changes',
+          actionKind: 'commit',
+          sessionState: 'Changes ready to commit·now',
+          sessionIcon: 'codicon-source-control',
+          dialogPresent: false,
+          announcement:
+            'Previewing Prototype feature. Feature work is complete. Changes are ready to commit.',
+        },
+        committed: {
+          prompt: undefined,
+          chatAction: undefined,
+          changesAction: 'Publish branch',
+          actionKind: 'publish',
+          sessionState: 'Changes committed·now',
+          sessionIcon: 'codicon-git-commit',
+          dialogPresent: false,
+          announcement:
+            'Previewing Prototype feature. Changes committed. The branch is ready to publish.',
+        },
+        published: {
+          prompt:
+            'The branch is published. Would you like me to create a pull request?',
+          chatAction: 'Create pull request',
+          changesAction: 'Create pull request',
+          actionKind: 'create-pull-request',
+          sessionState: 'Branch published·now',
+          sessionIcon: 'codicon-repo-push',
+          dialogPresent: false,
+          announcement:
+            'Previewing Prototype feature. Branch published. Ready to create a pull request.',
         },
       },
     )
   })
 
-  test('selects the CI-only security session from the Sessions sidebar', async () => {
+  test('retains independent workflow state across session navigation', async () => {
+    mountApp()
+
+    await openCreatePullRequestDialog()
+    await setFieldValue(
+      'input[name="pullRequestTitle"]',
+      'Retained Agent Merge state',
+    )
+    await continueToHandlingStep()
+    getElement('input[name="fixCI"]').click()
+    await nextTick()
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    getElement('[data-session-id="secure"]').click()
+    await nextTick()
+    await nextTick()
+    const prototypeWhileInactive = {
+      state: getText(
+        '[data-session-id="prototype"] .session-details-row',
+      ),
+      agentMergeState: getElement(
+        '[data-session-id="prototype"]',
+      ).getAttribute('data-agent-merge-state'),
+      repositoryState: getElement(
+        '[data-session-id="prototype"]',
+      ).getAttribute('data-repository-state'),
+    }
+
+    assert.equal(getText('.changes-repository-action'), 'Publish branch')
+    getElement('.changes-repository-action').click()
+    await nextTick()
+    await nextTick()
+
+    getElement('[data-session-id="regular"]').click()
+    await nextTick()
+    await nextTick()
+    const secureWhileInactive = {
+      state: getText('[data-session-id="secure"] .session-details-row'),
+      repositoryState: getElement(
+        '[data-session-id="secure"]',
+      ).getAttribute('data-repository-state'),
+    }
+
+    getElement('[data-session-id="prototype"]').click()
+    await nextTick()
+    await nextTick()
+    const restoredPrototype = {
+      createdMessagePresent: Boolean(
+        container.querySelector('.pull-request-created-message'),
+      ),
+      status: getText('[data-agent-merge-status-label]'),
+      settingsAction: getText('.workbench-agent-merge-settings'),
+      expanded: getElement('.agent-merge-disclosure').getAttribute(
+        'aria-expanded',
+      ),
+    }
+    getElement('.agent-merge-disclosure').click()
+    await nextTick()
+    const retainedPullRequestTitle = getText('.pull-request-pill')
+
+    getElement('[data-session-id="secure"]').click()
+    await nextTick()
+    await nextTick()
+    const restoredSecure = {
+      action: getText('.changes-repository-action'),
+      repositoryState: getElement(
+        '[data-session-id="secure"]',
+      ).getAttribute('data-repository-state'),
+    }
+
+    assert.deepEqual(
+      {
+        prototypeWhileInactive,
+        secureWhileInactive,
+        restoredPrototype,
+        retainedPullRequestTitle,
+        restoredSecure,
+      },
+      {
+        prototypeWhileInactive: {
+          state: '#333964 · Addressing review comments·now',
+          agentMergeState: 'working',
+          repositoryState: 'published',
+        },
+        secureWhileInactive: {
+          state: 'Branch published·12m',
+          repositoryState: 'published',
+        },
+        restoredPrototype: {
+          createdMessagePresent: true,
+          status: 'Addressing review comments',
+          settingsAction: 'Update Agent Merge Settings',
+          expanded: 'false',
+        },
+        retainedPullRequestTitle:
+          '#333964 Retained Agent Merge state',
+        restoredSecure: {
+          action: 'Create pull request',
+          repositoryState: 'published',
+        },
+      },
+    )
+  })
+
+  test('shows a compact status preview for inactive Agent Merge sessions', async () => {
+    mountApp()
+
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+    getElement('[data-session-id="secure"]').click()
+    await nextTick()
+    await nextTick()
+
+    const inactiveSession = getElement('[data-session-id="prototype"]')
+    const inactiveSessionContainer = inactiveSession.parentElement
+    const initial = {
+      hasPopup: inactiveSession.getAttribute('aria-haspopup'),
+      expanded: inactiveSession.getAttribute('aria-expanded'),
+      overlayPresent: Boolean(
+        container.querySelector('.session-status-hover-widget'),
+      ),
+    }
+
+    vi.useFakeTimers()
+    inactiveSessionContainer.dispatchEvent(new MouseEvent('mouseenter'))
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(999)
+    await nextTick()
+    const beforeDelay = {
+      expanded: inactiveSession.getAttribute('aria-expanded'),
+      overlayPresent: Boolean(
+        container.querySelector('.session-status-hover-widget'),
+      ),
+    }
+    await vi.advanceTimersByTimeAsync(1)
+    await nextTick()
+    const overlay = getElement('.session-status-hover-widget')
+    const hoverState = {
+      expanded: inactiveSession.getAttribute('aria-expanded'),
+      role: getElement('.agent-merge-status-overlay').getAttribute('role'),
+      title: getText(
+        `#${getElement('.agent-merge-status-overlay').getAttribute(
+          'aria-labelledby',
+        )}`,
+      ),
+      titleArea: getText('.status-overlay-heading'),
+      description: getText('.status-overlay-description'),
+      pullRequest: getElement(
+        '.status-overlay-pull-request',
+      ).getAttribute('aria-label'),
+      permissionsPresent: Boolean(
+        overlay.querySelector('.status-overlay-permissions'),
+      ),
+      footerPresent: Boolean(
+        overlay.querySelector('.status-overlay-footer'),
+      ),
+      activeSession: getText('.session-item[aria-current="page"] strong'),
+    }
+
+    inactiveSessionContainer.dispatchEvent(
+      new MouseEvent('mouseleave', { relatedTarget: document.body }),
+    )
+    await nextTick()
+    const afterHover = {
+      expanded: inactiveSession.getAttribute('aria-expanded'),
+      overlayPresent: Boolean(
+        container.querySelector('.session-status-hover-widget'),
+      ),
+    }
+
+    inactiveSession.focus()
+    await nextTick()
+    await nextTick()
+    const keyboardOverlay = getElement('.agent-merge-status-overlay')
+    getElement('.status-overlay-pull-request').focus()
+    await nextTick()
+    const keyboardState = {
+      expanded: inactiveSession.getAttribute('aria-expanded'),
+      overlayPresent: Boolean(
+        container.querySelector('.session-status-hover-widget'),
+      ),
+    }
+
+    keyboardOverlay.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    await nextTick()
+
+    assert.deepEqual(
+      {
+        initial,
+        beforeDelay,
+        hoverState,
+        afterHover,
+        keyboardState,
+        afterEscape: {
+          expanded: inactiveSession.getAttribute('aria-expanded'),
+          overlayPresent: Boolean(
+            container.querySelector('.session-status-hover-widget'),
+          ),
+          focusRestored: document.activeElement === inactiveSession,
+        },
+      },
+      {
+        initial: {
+          hasPopup: 'dialog',
+          expanded: 'false',
+          overlayPresent: false,
+        },
+        beforeDelay: {
+          expanded: 'false',
+          overlayPresent: false,
+        },
+        hoverState: {
+          expanded: 'true',
+          role: 'dialog',
+          title: 'Addressing feedback',
+          titleArea: 'Addressing feedback',
+          description:
+            'Open this session to view details or change Agent Merge settings.',
+          pullRequest:
+            'Open pull request #333964: Prototype Agent Merge UX. main from prototype/agent-merge-ux.',
+          permissionsPresent: false,
+          footerPresent: false,
+          activeSession: 'security: harden credential storage',
+        },
+        afterHover: {
+          expanded: 'false',
+          overlayPresent: false,
+        },
+        keyboardState: {
+          expanded: 'true',
+          overlayPresent: true,
+        },
+        afterEscape: {
+          expanded: 'false',
+          overlayPresent: false,
+          focusRestored: true,
+        },
+      },
+    )
+  })
+
+  test('opens pull request creation from Changes and restores focus', async () => {
+    mountApp()
+    const trigger = await openCreatePullRequestDialog(
+      '.changes-repository-action',
+    )
+    const dialog = getElement('[role="dialog"]')
+    const opened = {
+      title: getText(`#${dialog.getAttribute('aria-labelledby')}`),
+      focusedControl: document.activeElement.getAttribute('name'),
+    }
+
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    await nextTick()
+
+    assert.deepEqual(
+      {
+        opened,
+        closed: {
+          dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+          focusRestored: document.activeElement === trigger,
+        },
+      },
+      {
+        opened: {
+          title: 'Create pull request',
+          focusedControl: 'pullRequestTitle',
+        },
+        closed: {
+          dialogPresent: false,
+          focusRestored: true,
+        },
+      },
+    )
+  })
+
+  test('opens an accessible pull request configuration dialog and restores focus on cancel', async () => {
+    mountApp()
+    await openCreatePullRequestDialog()
+
+    const dialog = getElement('[role="dialog"]')
+    const detailsStep = {
+      modal: dialog.getAttribute('aria-modal'),
+      closeButtonPresent: Boolean(
+        dialog.querySelector('[aria-label="Close Create Pull Request"]'),
+      ),
+      title: getText(`#${dialog.getAttribute('aria-labelledby')}`),
+      description: getText(`#${dialog.getAttribute('aria-describedby')}`),
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      focusedControl: document.activeElement.getAttribute('name'),
+      pullRequestTitle: getElement('input[name="pullRequestTitle"]').value,
+      pullRequestDescription: getElement(
+        'textarea[name="pullRequestDescription"]',
+      ).value,
+      baseBranch: getElement('select[name="pullRequestBaseBranch"]').value,
+      sourceBranch: getText('.source-branch'),
+    }
+
+    await continueToHandlingStep()
+    const handlingStep = {
+      description: getText(`#${dialog.getAttribute('aria-describedby')}`),
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      completedStepIcon: getElement(
+        '.dialog-steps li.complete .codicon',
+      ).className,
+      creationModeLabel: getElement('.creation-mode').getAttribute('aria-label'),
+      branchSummary: getText('.branch-summary'),
+      focusedControl: document.activeElement.getAttribute('name'),
+      settings: getAgentMergeDialogSettings(),
+    }
+
+    getElement('.back-button').click()
+    await nextTick()
+    await nextTick()
+    const returnedToDetails = {
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      focusedControl: document.activeElement.getAttribute('name'),
+    }
+
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    await nextTick()
+
+    assert.deepEqual(
+      {
+        detailsStep,
+        handlingStep,
+        returnedToDetails,
+        cancelled: {
+          dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+          focusRestored: document.activeElement.classList.contains(
+            'repository-action',
+          ),
+        },
+      },
+      {
+        detailsStep: {
+          modal: 'true',
+          closeButtonPresent: false,
+          title: 'Create pull request',
+          description: 'Review the pull request details.',
+          currentStep: '1 Details',
+          focusedControl: 'pullRequestTitle',
+          pullRequestTitle: 'Prototype Agent Merge UX',
+          pullRequestDescription:
+            'Adds a focused prototype for exploring Agent Merge setup and post-creation controls.',
+          baseBranch: 'main',
+          sourceBranch: 'From prototype/agent-merge-ux',
+        },
+        handlingStep: {
+          description:
+            'Choose what happens after the pull request is created.',
+          currentStep: '2 Handling',
+          completedStepIcon: 'codicon codicon-check',
+          creationModeLabel: 'Pull request behavior',
+          branchSummary: 'main ← prototype/agent-merge-ux',
+          focusedControl: 'pullRequestMode',
+          settings: {
+            mode: 'agentMerge',
+            addressReviews: true,
+            fixCI: true,
+            resolveConflicts: true,
+            mergePullRequest: 'always',
+          },
+        },
+        returnedToDetails: {
+          currentStep: '1 Details',
+          focusedControl: 'pullRequestTitle',
+        },
+        cancelled: {
+          dialogPresent: false,
+          focusRestored: true,
+        },
+      },
+    )
+  })
+
+  test('toggles only pull request settings in Changes without losing session state', async () => {
+    mountApp()
+
+    const settingsUiToggle = getElement(
+      'input[name="showChangesPullRequestSettings"]',
+    )
+    const initial = {
+      role: settingsUiToggle.getAttribute('role'),
+      label: getText('.prototype-settings-toggle'),
+      checked: settingsUiToggle.checked,
+      handlingDesignPresent: Boolean(
+        container.querySelector('.handling-variant-control'),
+      ),
+    }
+
+    settingsUiToggle.click()
+    await nextTick()
+    await nextTick()
+
+    await openCreatePullRequestDialog()
+    const creationDetailsWhileHidden = {
+      steps: getText('.dialog-steps'),
+      primaryAction: getText('.primary-button'),
+    }
+    await continueToHandlingStep()
+    const creationHandlingWhileHidden = {
+      handlingVariant: getElement(
+        '.create-pr-dialog',
+      ).getAttribute('data-handling-variant'),
+      settings: getAgentMergeDialogSettings(),
+      primaryAction: getText('.primary-button'),
+    }
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    getElement('.agent-merge-status-trigger').click()
+    await nextTick()
+    const createdWhileHidden = {
+      pullRequest: getText('.pull-request-heading strong'),
+      settingsActionPresent: Boolean(
+        container.querySelector('.workbench-agent-merge-settings'),
+      ),
+      handlingDesignPresent: Boolean(
+        container.querySelector('.handling-variant-control'),
+      ),
+      triggerLabel: getElement(
+        '.agent-merge-status-trigger',
+      ).getAttribute('aria-label'),
+      handlingVariant: getElement(
+        '.agent-merge-status-overlay',
+      ).getAttribute('data-handling-variant'),
+      description: getText('.status-overlay-description'),
+      permissionsPresent: Boolean(
+        container.querySelector('.status-overlay-permissions'),
+      ),
+      footerPresent: Boolean(
+        container.querySelector('.status-overlay-footer'),
+      ),
+    }
+
+    getElement('.agent-merge-status-trigger').click()
+    await nextTick()
+    settingsUiToggle.click()
+    await nextTick()
+    await nextTick()
+    getElement('.agent-merge-status-trigger').click()
+    await nextTick()
+
+    const restored = {
+      checked: settingsUiToggle.checked,
+      pullRequest: getText('.pull-request-heading strong'),
+      settingsAction: getText('.workbench-agent-merge-settings'),
+      handlingDesignPresent: Boolean(
+        container.querySelector('.handling-variant-control'),
+      ),
+      statusPermissionsPresent: Boolean(
+        container.querySelector('.status-overlay-permissions'),
+      ),
+      statusFooterPresent: Boolean(
+        container.querySelector('.status-overlay-footer'),
+      ),
+    }
+
+    getElement('.agent-merge-status-trigger').click()
+    await nextTick()
+    getElement('.workbench-agent-merge-settings').click()
+    await nextTick()
+    await nextTick()
+    const settingsDialogOpened = getElement(
+      '.create-pr-dialog',
+    ).getAttribute('data-dialog-mode')
+    settingsUiToggle.click()
+    await nextTick()
+    await nextTick()
+    const hiddenWhileConfiguring = {
+      dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+      settingsActionPresent: Boolean(
+        container.querySelector('.workbench-agent-merge-settings'),
+      ),
+    }
+
+    assert.deepEqual(
+      {
+        initial,
+        hidden: {
+          checked: false,
+          handlingDesignPresent: true,
+          creationDetailsWhileHidden,
+          creationHandlingWhileHidden,
+        },
+        createdWhileHidden,
+        restored,
+        settingsDialogOpened,
+        hiddenWhileConfiguring,
+      },
+      {
+        initial: {
+          role: 'switch',
+          label: 'PR settings in Changes',
+          checked: true,
+          handlingDesignPresent: true,
+        },
+        hidden: {
+          checked: false,
+          handlingDesignPresent: true,
+          creationDetailsWhileHidden: {
+            steps: '1 Details 2 Handling',
+            primaryAction: 'Continue',
+          },
+          creationHandlingWhileHidden: {
+            handlingVariant: 'permissions',
+            settings: {
+              mode: 'agentMerge',
+              addressReviews: true,
+              fixCI: true,
+              resolveConflicts: true,
+              mergePullRequest: 'always',
+            },
+            primaryAction: 'Create pull request',
+          },
+        },
+        createdWhileHidden: {
+          pullRequest: '#333964',
+          settingsActionPresent: false,
+          handlingDesignPresent: true,
+          triggerLabel:
+            'Agent Merge status: Addressing feedback. Show details and controls.',
+          handlingVariant: 'permissions',
+          description:
+            'Control what the agent may change while it works on this pull request.',
+          permissionsPresent: true,
+          footerPresent: true,
+        },
+        restored: {
+          checked: true,
+          pullRequest: '#333964',
+          settingsAction: 'Update Agent Merge Settings',
+          handlingDesignPresent: true,
+          statusPermissionsPresent: true,
+          statusFooterPresent: true,
+        },
+        settingsDialogOpened: 'agent-merge-settings',
+        hiddenWhileConfiguring: {
+          dialogPresent: false,
+          settingsActionPresent: false,
+        },
+      },
+    )
+  })
+
+  test('creates a pull request with the full-control Agent Merge preset', async () => {
+    mountApp()
+    await openCreatePullRequestDialog()
+
+    await setFieldValue(
+      'input[name="pullRequestTitle"]',
+      'Agent Merge creation flow',
+    )
+    await setFieldValue(
+      'textarea[name="pullRequestDescription"]',
+      'Explores a two-step pull request flow.',
+    )
+    await setFieldValue(
+      'select[name="pullRequestBaseBranch"]',
+      'release/1.109',
+      'change',
+    )
+    await continueToHandlingStep()
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const agentMergeCardInitialState = {
+      expanded: getElement('.agent-merge-disclosure').getAttribute(
+        'aria-expanded',
+      ),
+      bodyPresent: Boolean(container.querySelector('.agent-merge-body')),
+    }
+    getElement('.agent-merge-disclosure').click()
+    await nextTick()
+
+    assert.deepEqual(
+      {
+        dialogPresent: Boolean(container.querySelector('[role="dialog"]')),
+        duplicateConfirmation: Boolean(
+          container.querySelector('.completed-action'),
+        ),
+        createdMessage: getText('.pull-request-created-message p'),
+        createdMessageIcon: getElement(
+          '.pull-request-created-message .codicon',
+        ).classList.contains('codicon-git-pull-request'),
+        createdMessageFocused:
+          document.activeElement === getElement('.pull-request-created-message'),
+        pullRequestTitle: getText('.pull-request-pill'),
+        targetBranch: getText('.pull-request-heading span'),
+        featureCompleteLabelPresent:
+          container.textContent.includes('Feature complete'),
+        agentMergeCardInitialState,
+        sessionListIconCount: getElement(
+          '.session-item[aria-current="page"]',
+        ).querySelectorAll('.codicon').length,
+        policy: getText('.agent-merge-policy'),
+        status: getElement('.agent-merge').getAttribute('aria-label'),
+        surfaceStatus: getAgentMergeSurfaceStatus(),
+        changesLabel: getElement('.changes-part').getAttribute('aria-label'),
+        settingsAction: getText('.workbench-agent-merge-settings'),
+        announcement: getElement('[aria-live="polite"]').textContent,
+      },
+      {
+        dialogPresent: false,
+        duplicateConfirmation: false,
+        createdMessage:
+          'Created pull request #333964 from prototype/agent-merge-ux into release/1.109.',
+        createdMessageIcon: true,
+        createdMessageFocused: true,
+        pullRequestTitle: '#333964 Agent Merge creation flow',
+        targetBranch: 'release/1.109 ← prototype/agent-merge-ux',
+        featureCompleteLabelPresent: false,
+        agentMergeCardInitialState: {
+          expanded: 'false',
+          bodyPresent: false,
+        },
+        sessionListIconCount: 1,
+        policy:
+          'It may handle reviews, CI, conflicts. Merge automatically when ready.',
+        status:
+          'Agent Merge: Addressing feedback. 1 Review Comment and 1 Failing Check',
+        surfaceStatus: {
+          commandCenter: {
+            label: 'Addressing feedback',
+            state: 'working',
+            accessibleLabel:
+              'Agent Merge status: Addressing feedback. Show details and controls.',
+          },
+          sessionList: {
+            label: '#333964 · Addressing feedback·now',
+            state: 'working',
+          },
+          session: {
+            label: 'Addressing feedback',
+            state: 'working',
+            accessibleLabel: 'Agent Merge status: Addressing feedback',
+          },
+        },
+        changesLabel: 'Pull request changes',
+        settingsAction: 'Update Agent Merge Settings',
+        announcement:
+          'Pull request 333964 created. Agent Merge status: Addressing feedback.',
+      },
+    )
+  })
+
+  test('switches Agent Merge handling designs over shared settings', async () => {
+    mountApp()
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+
+    const dialog = getElement('[role="dialog"]')
+    const permissionsVariant = {
+      variant: dialog.getAttribute('data-handling-variant'),
+      checkboxCount: dialog.querySelectorAll('.vscode-checkbox').length,
+      checkedVisualCount: dialog.querySelectorAll(
+        '.permission-checkbox input:checked + .vscode-checkbox',
+      ).length,
+      settings: getAgentMergeDialogSettings(),
+    }
+
+    await selectHandlingVariant('scale')
+    const autonomyInput = getElement('input[name="agentMergeAutonomy"]')
+    const scaleVariant = {
+      variant: dialog.getAttribute('data-handling-variant'),
+      value: autonomyInput.value,
+      valueText: autonomyInput.getAttribute('aria-valuetext'),
+      stopCount: dialog.querySelectorAll('.autonomy-stop').length,
+      completedStopCount: dialog.querySelectorAll('.autonomy-stop.complete')
+        .length,
+      remainingStart: getElement('.autonomy-range').style.getPropertyValue(
+        '--autonomy-progress',
+      ),
+      summary: {
+        level: getText('.autonomy-level-summary strong'),
+        description: getText('.autonomy-level-summary span'),
+      },
+    }
+
+    await setFieldValue('input[name="agentMergeAutonomy"]', '2')
+    const midpointScale = {
+      completedStopCount: dialog.querySelectorAll('.autonomy-stop.complete')
+        .length,
+      remainingStart: getElement('.autonomy-range').style.getPropertyValue(
+        '--autonomy-progress',
+      ),
+    }
+    await selectHandlingVariant('roles')
+    const rolesVariant = {
+      variant: dialog.getAttribute('data-handling-variant'),
+      optionCount: dialog.querySelectorAll(
+        'input[name="agentMergeRole"]',
+      ).length,
+      selectedRole: getElement(
+        'input[name="agentMergeRole"]:checked',
+      ).value,
+    }
+
+    getElement('input[name="agentMergeRole"][value="maintainer"]').click()
+    await nextTick()
+    await selectHandlingVariant('permissions')
+    const normalizedPermissions = getAgentMergeDialogSettings()
+
+    assert.deepEqual(
+      {
+        permissionsVariant,
+        scaleVariant,
+        midpointScale,
+        rolesVariant,
+        normalizedPermissions,
+      },
+      {
+        permissionsVariant: {
+          variant: 'permissions',
+          checkboxCount: 3,
+          checkedVisualCount: 3,
+          settings: {
+            mode: 'agentMerge',
+            addressReviews: true,
+            fixCI: true,
+            resolveConflicts: true,
+            mergePullRequest: 'always',
+          },
+        },
+        scaleVariant: {
+          variant: 'scale',
+          value: '4',
+          valueText: 'Full merge',
+          stopCount: 5,
+          completedStopCount: 5,
+          remainingStart: '100%',
+          summary: {
+            level: 'Full merge',
+            description:
+              'Handle every blocker and merge the pull request when ready.',
+          },
+        },
+        midpointScale: {
+          completedStopCount: 3,
+          remainingStart: '50%',
+        },
+        rolesVariant: {
+          variant: 'roles',
+          optionCount: 5,
+          selectedRole: 'contributor',
+        },
+        normalizedPermissions: {
+          mode: 'agentMerge',
+          addressReviews: true,
+          fixCI: true,
+          resolveConflicts: true,
+          mergePullRequest: 'never',
+        },
+      },
+    )
+  })
+
+  test('applies the handling design to the Agent Merge status overlay', async () => {
+    mountApp()
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    getElement('.agent-merge-status-trigger').click()
+    await nextTick()
+
+    const overlay = getElement('.agent-merge-status-overlay')
+    const permissionsVariant = {
+      variant: overlay.getAttribute('data-handling-variant'),
+      permissionCount: overlay.querySelectorAll(
+        '.status-overlay-permissions input[type="checkbox"]',
+      ).length,
+      scalePresent: Boolean(overlay.querySelector('.autonomy-scale')),
+      rolesPresent: Boolean(overlay.querySelector('.agent-role-selector')),
+    }
+
+    await selectHandlingVariant('scale')
+    const autonomyInput = getElement(
+      'input[name="status-agentMergeAutonomy"]',
+    )
+    const scaleVariant = {
+      variant: overlay.getAttribute('data-handling-variant'),
+      permissionControlsPresent: Boolean(
+        overlay.querySelector('.status-overlay-permissions'),
+      ),
+      value: autonomyInput.value,
+      valueText: autonomyInput.getAttribute('aria-valuetext'),
+      stopCount: overlay.querySelectorAll('.autonomy-stop').length,
+    }
+
+    await setFieldValue(
+      'input[name="status-agentMergeAutonomy"]',
+      '2',
+    )
+    await selectHandlingVariant('roles')
+    const roleTrigger = getElement('.role-select-trigger')
+    const rolesVariant = {
+      variant: overlay.getAttribute('data-handling-variant'),
+      selectedRole: roleTrigger.getAttribute('data-selected-role'),
+      description: getText('.selected-role-description'),
+      expanded: roleTrigger.getAttribute('aria-expanded'),
+      popupType: roleTrigger.getAttribute('aria-haspopup'),
+      nativeSelectPresent: Boolean(
+        overlay.querySelector('select[name="status-agentMergeRole"]'),
+      ),
+      roleCardsPresent: Boolean(
+        overlay.querySelector(
+          'input[type="radio"][name="status-agentMergeRole"]',
+        ),
+      ),
+    }
+
+    roleTrigger.click()
+    await nextTick()
+    const selectedRoleOption = getElement(
+      '.role-select-option[aria-selected="true"]',
+    )
+    const roleOptions = {
+      listboxLabel: getElement('.role-select-options').getAttribute(
+        'aria-label',
+      ),
+      optionCount: overlay.querySelectorAll(
+        '.role-select-option[role="option"]',
+      ).length,
+      titles: Array.from(
+        overlay.querySelectorAll('.role-select-option strong'),
+        option => option.textContent,
+      ),
+      descriptionsPresent: Array.from(
+        overlay.querySelectorAll('.role-select-option'),
+        option => Boolean(option.querySelector('.role-select-copy > span')),
+      ),
+      iconsPresent: Array.from(
+        overlay.querySelectorAll('.role-select-option'),
+        option => Boolean(option.querySelector(':scope > .codicon')),
+      ),
+      selectedRole:
+        selectedRoleOption.getAttribute('data-agent-role'),
+      activeDescendant:
+        roleTrigger.getAttribute('aria-activedescendant') ===
+        selectedRoleOption.id,
+      focusRemainsOnTrigger:
+        document.activeElement === roleTrigger,
+    }
+
+    roleTrigger.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+      }),
+    )
+    await nextTick()
+    const nextRoleOption = getElement(
+      '.role-select-option[data-agent-role="maintainer"]',
+    )
+    const arrowNavigation = {
+      activeRole: nextRoleOption.getAttribute('data-agent-role'),
+      active: nextRoleOption.classList.contains('active'),
+      focusRemainsOnTrigger:
+        document.activeElement === roleTrigger,
+    }
+    roleTrigger.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+      }),
+    )
+    await nextTick()
+    const roleSelection = {
+      expanded: roleTrigger.getAttribute('aria-expanded'),
+      selectedRole: roleTrigger.getAttribute('data-selected-role'),
+      description: getText('.selected-role-description'),
+      focusRestored: document.activeElement === roleTrigger,
+    }
+    await selectHandlingVariant('permissions')
+    const normalizedPermissions = {
+      addressReviews: getElement(
+        'input[name="status-addressReviews"]',
+      ).checked,
+      fixCI: getElement('input[name="status-fixCI"]').checked,
+      resolveConflicts: getElement(
+        'input[name="status-resolveConflicts"]',
+      ).checked,
+      mergePullRequest: getElement(
+        'select[name="status-mergePullRequest"]',
+      ).value,
+    }
+
+    assert.deepEqual(
+      {
+        permissionsVariant,
+        scaleVariant,
+        rolesVariant,
+        roleOptions,
+        arrowNavigation,
+        roleSelection,
+        normalizedPermissions,
+      },
+      {
+        permissionsVariant: {
+          variant: 'permissions',
+          permissionCount: 3,
+          scalePresent: false,
+          rolesPresent: false,
+        },
+        scaleVariant: {
+          variant: 'scale',
+          permissionControlsPresent: false,
+          value: '4',
+          valueText: 'Full merge',
+          stopCount: 5,
+        },
+        rolesVariant: {
+          variant: 'roles',
+          selectedRole: 'contributor',
+          description: 'Address review comments and fix failing checks.',
+          expanded: 'false',
+          popupType: 'listbox',
+          nativeSelectPresent: false,
+          roleCardsPresent: false,
+        },
+        roleOptions: {
+          listboxLabel: 'Agent roles',
+          optionCount: 5,
+          titles: [
+            'No Agent Merge',
+            'Observer',
+            'Contributor',
+            'Maintainer',
+            'Merge owner',
+          ],
+          descriptionsPresent: [true, true, true, true, true],
+          iconsPresent: [true, true, true, true, true],
+          selectedRole: 'contributor',
+          activeDescendant: true,
+          focusRemainsOnTrigger: true,
+        },
+        arrowNavigation: {
+          activeRole: 'maintainer',
+          active: true,
+          focusRemainsOnTrigger: true,
+        },
+        roleSelection: {
+          expanded: 'false',
+          selectedRole: 'maintainer',
+          description: 'Handle reviews, checks, and merge conflicts.',
+          focusRestored: true,
+        },
+        normalizedPermissions: {
+          addressReviews: true,
+          fixCI: true,
+          resolveConflicts: true,
+          mergePullRequest: 'never',
+        },
+      },
+    )
+  })
+
+  test('opens Agent Merge status controls and keeps settings synchronized', async () => {
+    mountApp()
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const trigger = getElement('.agent-merge-status-trigger')
+    trigger.click()
+    await nextTick()
+    await nextTick()
+
+    const overlay = getElement('.agent-merge-status-overlay')
+    const reviewPermission = getElement('input[name="status-addressReviews"]')
+    const mergePolicy = getElement('select[name="status-mergePullRequest"]')
+    const initialState = {
+      triggerExpanded: trigger.getAttribute('aria-expanded'),
+      triggerControlsOverlay:
+        trigger.getAttribute('aria-controls') === overlay.id,
+      role: overlay.getAttribute('role'),
+      modal: overlay.getAttribute('aria-modal'),
+      title: getText(`#${overlay.getAttribute('aria-labelledby')}`),
+      description: getText(`#${overlay.getAttribute('aria-describedby')}`),
+      pullRequest: getElement('.status-overlay-pull-request').getAttribute(
+        'aria-label',
+      ),
+      triggerFocused: document.activeElement === trigger,
+      permissionCount: overlay.querySelectorAll(
+        '.status-overlay-permissions input',
+      ).length,
+      reviewPermission: reviewPermission.checked,
+      mergePolicy: mergePolicy.value,
+    }
+
+    reviewPermission.checked = false
+    reviewPermission.dispatchEvent(new Event('change', { bubbles: true }))
+    await nextTick()
+    const afterPermissionChange = getAgentMergeSurfaceStatus()
+
+    getElement('.status-overlay-toggle').click()
+    await nextTick()
+    const afterDisabling = {
+      surfaceStatus: getAgentMergeSurfaceStatus(),
+      permissionsDisabled: getElement(
+        '.status-overlay-permissions',
+      ).hasAttribute('disabled'),
+      reviewPermissionDisabled: reviewPermission.disabled,
+      mergePolicyDisabled: mergePolicy.disabled,
+      toggleLabel: getText('.status-overlay-toggle'),
+      announcement: getElement('[aria-live="polite"]').textContent,
+    }
+
+    overlay.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    await nextTick()
+
+    assert.deepEqual(
+      {
+        initialState,
+        afterPermissionChange,
+        afterDisabling,
+        closed: {
+          overlayPresent: Boolean(
+            container.querySelector('.agent-merge-status-overlay'),
+          ),
+          triggerExpanded: trigger.getAttribute('aria-expanded'),
+          focusRestored: document.activeElement === trigger,
+        },
+      },
+      {
+        initialState: {
+          triggerExpanded: 'true',
+          triggerControlsOverlay: true,
+          role: 'dialog',
+          modal: 'false',
+          title: 'Addressing feedback',
+          description:
+            'Control what the agent may change while it works on this pull request.',
+          pullRequest:
+            'Open pull request #333964: Prototype Agent Merge UX. main from prototype/agent-merge-ux.',
+          triggerFocused: true,
+          permissionCount: 3,
+          reviewPermission: true,
+          mergePolicy: 'always',
+        },
+        afterPermissionChange: {
+          commandCenter: {
+            label: 'Fixing failing checks',
+            state: 'working',
+            accessibleLabel:
+              'Agent Merge status: Fixing failing checks. Show details and controls.',
+          },
+          sessionList: {
+            label: '#333964 · Fixing failing checks·now',
+            state: 'working',
+          },
+          session: {
+            label: 'Fixing failing checks',
+            state: 'working',
+            accessibleLabel: 'Agent Merge status: Fixing failing checks',
+          },
+        },
+        afterDisabling: {
+          surfaceStatus: {
+            commandCenter: {
+              label: 'Agent Merge off',
+              state: 'disabled',
+              accessibleLabel:
+                'Agent Merge status: Agent Merge off. Show details and controls.',
+            },
+            sessionList: {
+              label: '#333964 · Agent Merge off·now',
+              state: 'disabled',
+            },
+            session: {
+              label: 'Agent Merge off',
+              state: 'disabled',
+              accessibleLabel: 'Agent Merge status: Agent Merge off',
+            },
+          },
+          permissionsDisabled: true,
+          reviewPermissionDisabled: true,
+          mergePolicyDisabled: true,
+          toggleLabel: 'Enable Agent Merge',
+          announcement:
+            'Pull request 333964 created. Agent Merge status: Agent Merge off.',
+        },
+        closed: {
+          overlayPresent: false,
+          triggerExpanded: 'false',
+          focusRestored: true,
+        },
+      },
+    )
+  })
+
+  test('uses the CI-only preset for the completed security fix', async () => {
     mountApp()
 
     getElement('[data-session-id="secure"]').click()
     await nextTick()
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    const dialogSettings = getAgentMergeDialogSettings()
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+    getElement('.agent-merge-disclosure').click()
+    await nextTick()
 
     assert.deepEqual(
       {
-        activeSession: getText('.session-item[aria-current="page"] strong'),
-        titlebarSession: getElement('.session-picker span').textContent,
-        previewToggle: getElement('.workbench-agent-merge-toggle').getAttribute(
-          'aria-pressed',
-        ),
-        status: getElement('.agent-merge').getAttribute('aria-label'),
-        policy: getText('.system-notice p'),
-        announcement: getElement('[aria-live="polite"]').textContent,
+        request: getText('.chat-request'),
+        dialogSettings,
+        policy: getText('.agent-merge-policy'),
+        surfaceStatus: getAgentMergeSurfaceStatus(),
       },
       {
-        activeSession: 'security: harden credential storage',
-        titlebarSession: 'security: harden credential storage',
-        previewToggle: 'true',
-        status: 'Agent Merge: 1 Review Comment and 1 Failing Check',
+        request:
+          'Fix the failing security test without changing the reviewed trust boundary.',
+        dialogSettings: {
+          mode: 'agentMerge',
+          addressReviews: false,
+          fixCI: true,
+          resolveConflicts: false,
+          mergePullRequest: 'never',
+        },
         policy: 'It may handle CI. Leave the pull request open.',
-        announcement:
-          'Previewing Sensitive security fix. 1 Review Comment and 1 Failing Check. Agent Merge is enabled.',
+        surfaceStatus: {
+          commandCenter: {
+            label: 'Fixing failing checks',
+            state: 'working',
+            accessibleLabel:
+              'Agent Merge status: Fixing failing checks. Show details and controls.',
+          },
+          sessionList: {
+            label: '#334102 · Fixing failing checks·12m',
+            state: 'working',
+          },
+          session: {
+            label: 'Fixing failing checks',
+            state: 'working',
+            accessibleLabel: 'Agent Merge status: Fixing failing checks',
+          },
+        },
       },
     )
   })
 
-  test('selects a regular PR with Agent Merge off from the Sessions sidebar', async () => {
+  test('creates a regular pull request without Agent Merge', async () => {
     mountApp()
 
     getElement('[data-session-id="regular"]').click()
     await nextTick()
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    const dialogState = {
+      mode: getElement('input[name="pullRequestMode"]:checked').value,
+      permissionsPresent: Boolean(
+        container.querySelector('.agent-merge-permissions'),
+      ),
+      permissionsDisabled: getElement(
+        '.agent-merge-permissions',
+      ).hasAttribute('disabled'),
+      fixCIDisabled: getElement('input[name="fixCI"]').disabled,
+    }
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
 
     assert.deepEqual(
       {
+        dialogState,
         activeSession: getText('.session-item[aria-current="page"] strong'),
-        previewToggle: getElement('.workbench-agent-merge-toggle').getAttribute(
-          'aria-pressed',
-        ),
         card: Boolean(container.querySelector('.agent-merge')),
-        notice: getText('.agent-merge-disabled-note strong'),
+        subtitle: getText('.agent-merge-session-status p'),
+        diffCounts: [...container.querySelectorAll('.change-count')].map(
+          count => ({
+            label: count.getAttribute('aria-label'),
+            additions: count
+              .querySelector('.change-count-additions')
+              .textContent.trim(),
+            deletions: count
+              .querySelector('.change-count-deletions')
+              .textContent.trim(),
+          }),
+        ),
+        surfaceStatus: getAgentMergeSurfaceStatus(),
+        settingsAction: {
+          label: getText('.workbench-agent-merge-settings'),
+          accessibleLabel: getElement(
+            '.workbench-agent-merge-settings',
+          ).getAttribute('aria-label'),
+          popupType: getElement(
+            '.workbench-agent-merge-settings',
+          ).getAttribute('aria-haspopup'),
+        },
         announcement: getElement('[aria-live="polite"]').textContent,
       },
       {
+        dialogState: {
+          mode: 'standard',
+          permissionsPresent: true,
+          permissionsDisabled: true,
+          fixCIDisabled: true,
+        },
         activeSession: 'sessions: refine loading state',
-        previewToggle: 'false',
         card: false,
-        notice: 'Agent Merge is off for this session.',
+        subtitle: "You're in control of reviews, checks, and merging.",
+        diffCounts: [
+          {
+            label: '11 additions, 3 deletions',
+            additions: '+11',
+            deletions: '−3',
+          },
+          {
+            label: '20 additions, 0 deletions',
+            additions: '+20',
+            deletions: '−0',
+          },
+        ],
+        surfaceStatus: {
+          commandCenter: {
+            label: 'Agent Merge off',
+            state: 'disabled',
+            accessibleLabel:
+              'Agent Merge status: Agent Merge off. Show details and controls.',
+          },
+          sessionList: {
+            label: '#334220 · Agent Merge off·34m',
+            state: 'disabled',
+          },
+          session: {
+            label: 'Agent Merge off',
+            state: 'disabled',
+            accessibleLabel: 'Agent Merge status: Agent Merge off',
+          },
+        },
+        settingsAction: {
+          label: 'Configure Agent Merge',
+          accessibleLabel:
+            'Configure Agent Merge for this session',
+          popupType: 'dialog',
+        },
         announcement:
-          'Previewing Regular pull request. 1 Review Comment. Agent Merge is disabled.',
+          'Pull request 334220 created. Agent Merge status: Agent Merge off.',
       },
     )
-  })
 
-  test('toggles Agent Merge from the pull request changes surface', async () => {
-    mountApp()
-
-    getElement('.workbench-agent-merge-toggle').click()
+    const settingsAction = getElement(
+      '.workbench-agent-merge-settings',
+    )
+    settingsAction.click()
     await nextTick()
-    const disabledState = {
-      previewPressed: getElement('.workbench-agent-merge-toggle').getAttribute(
-        'aria-pressed',
-      ),
-      card: container.querySelector('.agent-merge'),
-      notice: getElement('.agent-merge-disabled-note strong').textContent,
-    }
+    await nextTick()
 
-    getElement('.workbench-agent-merge-toggle').click()
+    const settingsDialog = getElement('.agent-merge-settings-dialog')
+    const selectedMode = getElement(
+      '.agent-merge-settings-dialog input[name="pullRequestMode"]:checked',
+    )
+    assert.deepEqual(
+      {
+        actionExpanded: settingsAction.getAttribute('aria-expanded'),
+        title: getText(
+          `#${settingsDialog.getAttribute('aria-labelledby')}`,
+        ),
+        description: getText(
+          `#${settingsDialog.getAttribute('aria-describedby')}`,
+        ),
+        role: settingsDialog.getAttribute('role'),
+        modal: settingsDialog.getAttribute('aria-modal'),
+        dialogMode: settingsDialog.getAttribute('data-dialog-mode'),
+        pullRequest: getText(
+          '.agent-merge-settings-dialog .branch-summary strong',
+        ),
+        creationStepsPresent: Boolean(
+          settingsDialog.querySelector('.dialog-steps'),
+        ),
+        selectedMode: selectedMode.value,
+        selectedModeFocused: document.activeElement === selectedMode,
+        permissionsDisabled: getElement(
+          '.agent-merge-settings-dialog .agent-merge-permissions',
+        ).hasAttribute('disabled'),
+        saveAction: getText(
+          '.agent-merge-settings-dialog .primary-button',
+        ),
+      },
+      {
+        actionExpanded: 'true',
+        title: 'Configure Agent Merge',
+        description: 'Choose how Agent Merge handles this pull request.',
+        role: 'dialog',
+        modal: 'true',
+        dialogMode: 'agent-merge-settings',
+        pullRequest: '#334220 sessions: refine loading state',
+        creationStepsPresent: false,
+        selectedMode: 'standard',
+        selectedModeFocused: true,
+        permissionsDisabled: true,
+        saveAction: 'Save settings',
+      },
+    )
+
+    getElement(
+      '.agent-merge-settings-dialog input[name="pullRequestMode"][value="agentMerge"]',
+    ).click()
+    await nextTick()
+    getElement(
+      '.agent-merge-settings-dialog .primary-button',
+    ).click()
+    await nextTick()
     await nextTick()
 
     assert.deepEqual(
       {
-        disabledState,
-        enabledState: {
-          previewPressed: getElement('.workbench-agent-merge-toggle').getAttribute(
-            'aria-pressed',
-          ),
-          card: Boolean(container.querySelector('.agent-merge')),
-        },
+        surfaceStatus: getAgentMergeSurfaceStatus(),
+        settingsAction: getText('.workbench-agent-merge-settings'),
+        dialogPresent: Boolean(
+          container.querySelector('.agent-merge-settings-dialog'),
+        ),
+        focusRestored: document.activeElement === settingsAction,
       },
       {
-        disabledState: {
-          previewPressed: 'false',
-          card: null,
-          notice: 'Agent Merge is off for this session.',
+        surfaceStatus: {
+          commandCenter: {
+            label: 'Monitoring pull request',
+            state: 'monitoring',
+            accessibleLabel:
+              'Agent Merge status: Monitoring pull request. Show details and controls.',
+          },
+          sessionList: {
+            label: '#334220 · Monitoring pull request·34m',
+            state: 'monitoring',
+          },
+          session: {
+            label: 'Monitoring pull request',
+            state: 'monitoring',
+            accessibleLabel: 'Agent Merge status: Monitoring pull request',
+          },
         },
-        enabledState: {
-          previewPressed: 'true',
-          card: true,
-        },
+        settingsAction: 'Update Agent Merge Settings',
+        dialogPresent: false,
+        focusRestored: true,
       },
     )
   })

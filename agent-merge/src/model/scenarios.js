@@ -1,16 +1,68 @@
+export const repositoryStates = Object.freeze({
+  uncommitted: 'uncommitted',
+  committed: 'committed',
+  published: 'published',
+})
+
+const prePullRequestActions = Object.freeze({
+  [repositoryStates.uncommitted]: Object.freeze({
+    kind: 'commit',
+    label: 'Commit changes',
+    icon: 'codicon-git-commit',
+    sessionIcon: 'codicon-source-control',
+    sessionLabel: 'Changes ready to commit',
+    announcement: 'Feature work is complete. Changes are ready to commit.',
+    nextState: repositoryStates.committed,
+    opensPullRequest: false,
+  }),
+  [repositoryStates.committed]: Object.freeze({
+    kind: 'publish',
+    label: 'Publish branch',
+    icon: 'codicon-cloud-upload',
+    sessionIcon: 'codicon-git-commit',
+    sessionLabel: 'Changes committed',
+    announcement: 'Changes committed. The branch is ready to publish.',
+    nextState: repositoryStates.published,
+    opensPullRequest: false,
+  }),
+  [repositoryStates.published]: Object.freeze({
+    kind: 'create-pull-request',
+    label: 'Create pull request',
+    icon: 'codicon-git-pull-request',
+    sessionIcon: 'codicon-repo-push',
+    sessionLabel: 'Branch published',
+    chatPrompt:
+      'The branch is published. Would you like me to create a pull request?',
+    announcement: 'Branch published. Ready to create a pull request.',
+    nextState: undefined,
+    opensPullRequest: true,
+  }),
+})
+
+export function getPrePullRequestAction(state) {
+  const action = prePullRequestActions[state]
+  if (!action) {
+    throw new Error(`Unsupported repository state: ${state}`)
+  }
+  return action
+}
+
 export const scenarios = [
   {
     id: 'prototype',
-    label: 'Prototype pull request',
-    description: 'Agent Merge has full control to repair and merge this low-risk prototype.',
+    label: 'Prototype feature',
+    description: 'Completed prototype ready to create with full Agent Merge control.',
     title: 'Prototype Agent Merge UX',
     pullRequestNumber: 333964,
     pullRequestUrl: 'https://github.com/microsoft/vscode/pull/333964',
+    pullRequestDescription:
+      'Adds a focused prototype for exploring Agent Merge setup and post-creation controls.',
     branch: 'prototype/agent-merge-ux',
     baseBranch: 'main',
+    baseBranches: ['main', 'release/1.109'],
+    repositoryState: repositoryStates.uncommitted,
     relativeTime: 'now',
     timestamp: '9:41 AM',
-    agentMergeLabel: 'Full control',
     agentMerge: {
       enabled: true,
       addressReviews: true,
@@ -18,8 +70,9 @@ export const scenarios = [
       resolveConflicts: true,
       mergePullRequest: 'always',
     },
-    request:
-      'Build the Agent Merge UX prototype and take the pull request through merge.',
+    request: 'Build the Agent Merge UX prototype.',
+    completion:
+      'I finished the Agent Merge UX prototype and added focused tests. Everything is ready for review.',
     comments: [
       {
         author: 'copilot-pull-request-reviewer',
@@ -37,8 +90,8 @@ export const scenarios = [
     response:
       'I addressed the review feedback and fixed the failing test. I can merge automatically when the new checks pass.',
     changedFiles: [
-      { name: 'agentMergeActions.ts', changeCount: '+18 −4' },
-      { name: 'agentMerge.ts', changeCount: '+7 −2' },
+      { name: 'agentMergeActions.ts', additions: 18, deletions: 4 },
+      { name: 'agentMerge.ts', additions: 7, deletions: 2 },
     ],
   },
   {
@@ -48,11 +101,14 @@ export const scenarios = [
     title: 'security: harden credential storage',
     pullRequestNumber: 334102,
     pullRequestUrl: 'https://github.com/microsoft/vscode/pull/334102',
+    pullRequestDescription:
+      'Hardens credential storage while preserving the reviewed trust boundary.',
     branch: 'security/harden-credential-storage',
     baseBranch: 'main',
+    baseBranches: ['main', 'release/1.109'],
+    repositoryState: repositoryStates.committed,
     relativeTime: '12m',
     timestamp: '10:03 AM',
-    agentMergeLabel: 'CI fixes only',
     agentMerge: {
       enabled: true,
       addressReviews: false,
@@ -62,6 +118,8 @@ export const scenarios = [
     },
     request:
       'Fix the failing security test without changing the reviewed trust boundary.',
+    completion:
+      'I completed the security fix and added coverage without changing the reviewed trust boundary.',
     comments: [
       {
         author: 'security-reviewer',
@@ -79,22 +137,25 @@ export const scenarios = [
     response:
       'I fixed the failing security test. The review feedback and final merge remain with the security owner.',
     changedFiles: [
-      { name: 'credentialStore.ts', changeCount: '+5 −2' },
-      { name: 'credentialStore.test.ts', changeCount: '+14 −1' },
+      { name: 'credentialStore.ts', additions: 5, deletions: 2 },
+      { name: 'credentialStore.test.ts', additions: 14, deletions: 1 },
     ],
   },
   {
     id: 'regular',
-    label: 'Regular pull request',
-    description: 'A normal pull request where Agent Merge has not been enabled.',
+    label: 'Regular feature',
+    description: 'Completed feature ready for a regular pull request without Agent Merge.',
     title: 'sessions: refine loading state',
     pullRequestNumber: 334220,
     pullRequestUrl: 'https://github.com/microsoft/vscode/pull/334220',
+    pullRequestDescription:
+      'Refines session loading behavior while keeping the selected session stable.',
     branch: 'sessions/refine-loading-state',
     baseBranch: 'main',
+    baseBranches: ['main', 'release/1.109'],
+    repositoryState: repositoryStates.published,
     relativeTime: '34m',
     timestamp: '11:18 AM',
-    agentMergeLabel: 'Agent Merge off',
     agentMerge: {
       enabled: false,
       addressReviews: false,
@@ -102,7 +163,9 @@ export const scenarios = [
       resolveConflicts: false,
       mergePullRequest: 'never',
     },
-    request: 'Open a regular pull request for the session loading-state refinement.',
+    request: 'Refine the session loading state while keeping the selection stable.',
+    completion:
+      'I finished the loading-state refinement and added coverage for stable session selection.',
     comments: [
       {
         author: 'octocat',
@@ -119,15 +182,11 @@ export const scenarios = [
       'Address the review feedback after Agent Merge is enabled and permissions are selected.',
     response: 'The pull request is open and waiting for review.',
     changedFiles: [
-      { name: 'sessionsList.ts', changeCount: '+11 −3' },
-      { name: 'sessionsList.test.ts', changeCount: '+20 −0' },
+      { name: 'sessionsList.ts', additions: 11, deletions: 3 },
+      { name: 'sessionsList.test.ts', additions: 20, deletions: 0 },
     ],
   },
 ]
-
-export function createDefaultSettings() {
-  return createScenarioSettings(scenarios[0].id)
-}
 
 export function createScenarioSettings(id) {
   const scenario = getScenario(id)
@@ -137,8 +196,80 @@ export function createScenarioSettings(id) {
   }
 }
 
+export function createScenarioPullRequestDetails(id) {
+  const scenario = getScenario(id)
+  return {
+    title: scenario.title,
+    description: scenario.pullRequestDescription,
+    baseBranch: scenario.baseBranch,
+  }
+}
+
 export function getScenario(id) {
   return scenarios.find((scenario) => scenario.id === id) ?? scenarios[0]
+}
+
+export function getAgentMergeStatus(
+  scenario,
+  settings,
+  pullRequestCreated,
+) {
+  if (!pullRequestCreated) {
+    return {
+      kind: 'unavailable',
+      label: 'No pull request',
+    }
+  }
+
+  if (!settings.enabled) {
+    return {
+      kind: 'disabled',
+      label: 'Agent Merge off',
+    }
+  }
+
+  const pendingWork = [
+    settings.addressReviews && scenario.comments.length > 0 && 'reviews',
+    settings.fixCI && scenario.checks.length > 0 && 'checks',
+    settings.resolveConflicts && scenario.conflicting && 'conflicts',
+  ].filter(Boolean)
+
+  if (pendingWork.length > 1) {
+    return {
+      kind: 'working',
+      label: 'Addressing feedback',
+    }
+  }
+
+  switch (pendingWork[0]) {
+    case 'reviews':
+      return {
+        kind: 'working',
+        label: 'Addressing review comments',
+      }
+    case 'checks':
+      return {
+        kind: 'working',
+        label: 'Fixing failing checks',
+      }
+    case 'conflicts':
+      return {
+        kind: 'working',
+        label: 'Resolving merge conflicts',
+      }
+  }
+
+  if (settings.mergePullRequest !== 'never') {
+    return {
+      kind: 'monitoring',
+      label: 'Waiting to merge',
+    }
+  }
+
+  return {
+    kind: 'monitoring',
+    label: 'Monitoring pull request',
+  }
 }
 
 export function formatAgentMergeStatus(scenario) {
