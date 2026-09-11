@@ -8,6 +8,7 @@ import {
   useId,
 } from 'vue'
 import AgentMergeHandlingControls from './AgentMergeHandlingControls.vue'
+import FollowUpEditor from './FollowUpEditor.vue'
 
 const props = defineProps({
   scenario: {
@@ -26,6 +27,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  followUpTemplate: {
+    type: Object,
+    default: undefined,
+  },
   settingsOnly: {
     type: Boolean,
     default: false,
@@ -34,7 +39,11 @@ const props = defineProps({
 
 const emit = defineEmits(['cancel', 'create', 'save'])
 const dialog = ref()
+const dialogBody = ref()
 const titleInput = ref()
+const followUpEditor = ref()
+const configureFollowUp = ref(false)
+const followUpIsValid = ref(false)
 const step = ref(props.settingsOnly ? 2 : 1)
 const details = reactive({
   title: props.pullRequestDetails.title,
@@ -62,9 +71,23 @@ const headerDescription = computed(() => {
   if (props.settingsOnly) {
     return 'Choose how Agent Merge handles this pull request.'
   }
-  return step.value === 1
-    ? 'Review the pull request details.'
-    : 'Choose what happens after the pull request is created.'
+  switch (step.value) {
+    case 1:
+      return 'Review the pull request details.'
+    case 2:
+      return 'Choose what happens after the pull request is created.'
+    default:
+      return 'Choose when the follow up runs and what it should do.'
+  }
+})
+const primaryActionLabel = computed(() => {
+  if (props.settingsOnly) {
+    return 'Save settings'
+  }
+  if (step.value === 1 || (step.value === 2 && configureFollowUp.value)) {
+    return 'Continue'
+  }
+  return 'Create pull request'
 })
 
 function applyConfiguration(configuration) {
@@ -100,8 +123,15 @@ function getHandlingControlSelector() {
   }
 }
 
+function resetDialogBodyScroll() {
+  if (dialogBody.value) {
+    dialogBody.value.scrollTop = 0
+  }
+}
+
 async function focusHandlingControl() {
   await nextTick()
+  resetDialogBodyScroll()
   dialog.value?.querySelector(getHandlingControlSelector())?.focus()
 }
 
@@ -134,22 +164,51 @@ async function submit() {
     return
   }
 
-  const settings = getSettings()
   if (props.settingsOnly) {
-    emit('save', settings)
+    emit('save', getSettings())
+    return
+  }
+  if (step.value === 2 && configureFollowUp.value) {
+    step.value = 3
+    await focusFollowUpEditor()
+    return
+  }
+  if (step.value === 3 && !followUpIsValid.value) {
     return
   }
 
   emit('create', {
     details: { ...details },
-    settings,
+    settings: getSettings(),
+    followUp: configureFollowUp.value
+      ? followUpEditor.value.getDraft()
+      : undefined,
   })
+}
+
+async function focusFollowUpEditor() {
+  await nextTick()
+  resetDialogBodyScroll()
+  followUpEditor.value?.focus()
 }
 
 async function showDetailsStep() {
   step.value = 1
   await nextTick()
+  resetDialogBodyScroll()
   titleInput.value?.focus()
+}
+
+async function showPreviousStep() {
+  if (step.value === 2) {
+    await showDetailsStep()
+    return
+  }
+
+  step.value = 2
+  await nextTick()
+  resetDialogBodyScroll()
+  dialog.value?.querySelector('input[name="configureFollowUp"]')?.focus()
 }
 
 function handleKeydown(event) {
@@ -224,16 +283,31 @@ function handleKeydown(event) {
             Details
           </li>
           <li
-            :class="{ current: step === 2 }"
+            :class="{ current: step === 2, complete: step > 2 }"
             :aria-current="step === 2 ? 'step' : undefined"
           >
-            <span>2</span>
+            <span>
+              <i
+                v-if="step > 2"
+                class="codicon codicon-check"
+                aria-hidden="true"
+              />
+              <template v-else>2</template>
+            </span>
             Handling
+          </li>
+          <li
+            v-if="configureFollowUp"
+            :class="{ current: step === 3 }"
+            :aria-current="step === 3 ? 'step' : undefined"
+          >
+            <span>3</span>
+            Follow Up
           </li>
         </ol>
       </header>
 
-      <div class="create-pr-dialog-body">
+      <div ref="dialogBody" class="create-pr-dialog-body">
         <section
           v-if="!settingsOnly && step === 1"
           class="pull-request-details"
@@ -276,7 +350,7 @@ function handleKeydown(event) {
           </p>
         </section>
 
-        <div v-else class="handling-step">
+        <div v-else-if="settingsOnly || step === 2" class="handling-step">
           <div class="branch-summary">
             <i
               class="codicon"
@@ -415,15 +489,59 @@ function handleKeydown(event) {
             :settings="handlingSettings"
             @update:configuration="applyConfiguration"
           />
+
+          <section
+            v-if="!settingsOnly && followUpTemplate"
+            class="pull-request-follow-up"
+          >
+            <label class="permission-checkbox follow-up-checkbox">
+              <input
+                v-model="configureFollowUp"
+                type="checkbox"
+                name="configureFollowUp"
+              />
+              <span class="vscode-checkbox" aria-hidden="true">
+                <i class="codicon codicon-check" />
+              </span>
+              <span class="follow-up-option-copy">
+                <strong>Add a follow up</strong>
+                <span>
+                  Set up a future job on the next step.
+                </span>
+              </span>
+            </label>
+          </section>
         </div>
+
+        <KeepAlive>
+          <FollowUpEditor
+            v-if="!settingsOnly && configureFollowUp && step === 3"
+            ref="followUpEditor"
+            :template="followUpTemplate"
+            role="region"
+            aria-label="Follow Up configuration"
+            @update:valid="followUpIsValid = $event"
+          >
+            <template #context>
+              <div class="branch-summary">
+                <i class="codicon codicon-git-branch" aria-hidden="true" />
+                <span class="branch-summary-copy">
+                  <span class="branch-path">
+                    {{ details.baseBranch }} ← {{ scenario.branch }}
+                  </span>
+                </span>
+              </div>
+            </template>
+          </FollowUpEditor>
+        </KeepAlive>
       </div>
 
       <footer class="create-pr-dialog-footer">
         <button
-          v-if="!settingsOnly && step === 2"
+          v-if="!settingsOnly && step > 1"
           class="secondary-button back-button"
           type="button"
-          @click="showDetailsStep"
+          @click="showPreviousStep"
         >
           Back
         </button>
@@ -431,14 +549,16 @@ function handleKeydown(event) {
           <button class="secondary-button" type="button" @click="emit('cancel')">
             Cancel
           </button>
-          <button class="primary-button" type="submit">
-            {{
-              settingsOnly
-                ? 'Save settings'
-                : step === 1
-                  ? 'Continue'
-                  : 'Create pull request'
-            }}
+          <button
+            class="primary-button"
+            type="submit"
+            :disabled="
+              !settingsOnly &&
+              step === 3 &&
+              !followUpIsValid
+            "
+          >
+            {{ primaryActionLabel }}
           </button>
         </div>
       </footer>
@@ -771,6 +891,30 @@ legend {
   cursor: default;
 }
 
+.pull-request-follow-up {
+  margin-top: var(--vscode-spacing-size200);
+  padding-top: var(--vscode-spacing-size160);
+  border-top: var(--vscode-strokeThickness) solid
+    var(--vscode-sideBarSectionHeader-border);
+}
+
+.follow-up-option-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--vscode-spacing-size20);
+}
+
+.follow-up-option-copy strong {
+  font-weight: var(--vscode-fontWeight-semiBold);
+}
+
+.follow-up-option-copy > span {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--vscode-fontSize-body2);
+  line-height: 1.4;
+}
+
 .merge-policy {
   display: flex;
   align-items: center;
@@ -827,8 +971,13 @@ legend {
   border: var(--vscode-strokeThickness) solid var(--vscode-button-border);
 }
 
-.primary-button:hover {
+.primary-button:hover:not(:disabled) {
   background: var(--vscode-button-hoverBackground);
+}
+
+.primary-button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .form-field input:focus-visible,
@@ -841,7 +990,8 @@ legend {
 }
 
 .creation-mode label:has(input:focus-visible),
-.agent-merge-permissions label:has(input:focus-visible) {
+.agent-merge-permissions label:has(input:focus-visible),
+.follow-up-checkbox:has(input:focus-visible) {
   outline: var(--vscode-strokeThickness) solid var(--vscode-focusBorder);
   outline-offset: var(--vscode-spacing-size20);
 }

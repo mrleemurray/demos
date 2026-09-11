@@ -2,7 +2,11 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import AgentMergeCard from './AgentMergeCard.vue'
 import AgentMergeStatusWidget from './AgentMergeStatusWidget.vue'
+import CreateFollowUpDialog from './CreateFollowUpDialog.vue'
 import CreatePullRequestDialog from './CreatePullRequestDialog.vue'
+import FollowUpDialog from './FollowUpDialog.vue'
+import FollowUpsSurface from './FollowUpsSurface.vue'
+import { createFollowUp as createFollowUpModel } from '../model/followUps.js'
 import {
   formatAgentMergeStatus,
   getPrePullRequestAction,
@@ -37,6 +41,14 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  followUps: {
+    type: Array,
+    required: true,
+  },
+  followUpTemplates: {
+    type: Array,
+    required: true,
+  },
   pullRequestDetails: {
     type: Object,
     required: true,
@@ -53,6 +65,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'advance:repository-state',
+  'create:follow-up',
   'create:pull-request',
   'select:scenario',
   'update:setting',
@@ -63,6 +76,11 @@ const pullRequestCreatedMessage = ref()
 const agentMergeSettingsTrigger = ref()
 const showingCreatePullRequestDialog = ref(false)
 const showingAgentMergeSettingsDialog = ref(false)
+const showingCreateFollowUpDialog = ref(false)
+const selectedFollowUp = ref()
+const createFollowUpTrigger = ref()
+const followUpTrigger = ref()
+const detailsVisible = ref(true)
 const inactiveSessionStatusId = ref()
 const inactiveSessionStatusPosition = ref({})
 const inactiveSessionStatusTrigger = ref()
@@ -108,6 +126,28 @@ const agentMergePolicyDescription = computed(() => {
   }
   return `It may handle ${authorizedActions.value.join(', ')}. ${mergePolicy.value}.`
 })
+const nextFollowUpTemplate = computed(
+  () =>
+    props.followUpTemplates.find(
+      template =>
+        !props.followUps.some(
+          followUp => followUp.templateId === template.id,
+        ),
+    ) ?? {
+      id: 'follow-up-task',
+      name: `Follow up on #${props.scenario.pullRequestNumber}`,
+      description: 'Run future work related to this pull request.',
+      fileName: 'follow-up-task.followup.md',
+      triggerType: 'event',
+      event: 'pull_request.merged',
+      eventLabel: 'Pull request merged',
+      sourceLabel: 'GitHub webhook',
+      delay: '1d',
+      timingLabel: '1 day after merge',
+      statusLabel: 'Waiting for pull request merge',
+      instructions: 'Describe the follow-up work to complete.',
+    },
+)
 
 function openAgentMergeSettings(event) {
   if (!props.showChangesPullRequestSettings) {
@@ -115,6 +155,16 @@ function openAgentMergeSettings(event) {
   }
   agentMergeSettingsTrigger.value = event.currentTarget
   showingAgentMergeSettingsDialog.value = true
+}
+
+function openFollowUp({ followUp, trigger }) {
+  selectedFollowUp.value = followUp
+  followUpTrigger.value = trigger
+}
+
+function openCreateFollowUp({ trigger }) {
+  createFollowUpTrigger.value = trigger
+  showingCreateFollowUpDialog.value = true
 }
 
 function getChangeCountLabel(file) {
@@ -233,6 +283,10 @@ watch(
     clearInactiveSessionHoverTimer()
     showingCreatePullRequestDialog.value = false
     showingAgentMergeSettingsDialog.value = false
+    showingCreateFollowUpDialog.value = false
+    selectedFollowUp.value = undefined
+    createFollowUpTrigger.value = undefined
+    followUpTrigger.value = undefined
     inactiveSessionStatusId.value = undefined
   },
 )
@@ -267,7 +321,15 @@ async function cancelCreatePullRequest() {
 }
 
 async function createPullRequest(configuration) {
-  emit('create:pull-request', configuration)
+  const { followUp: followUpDraft, ...pullRequestConfiguration } =
+    configuration
+  emit('create:pull-request', pullRequestConfiguration)
+  if (followUpDraft) {
+    emit(
+      'create:follow-up',
+      createFollowUpModel(followUpDraft, props.followUps),
+    )
+  }
   showingCreatePullRequestDialog.value = false
   createPullRequestTrigger.value = undefined
   await nextTick()
@@ -278,6 +340,31 @@ async function closeAgentMergeSettings() {
   showingAgentMergeSettingsDialog.value = false
   await nextTick()
   agentMergeSettingsTrigger.value?.focus()
+}
+
+async function closeFollowUp() {
+  selectedFollowUp.value = undefined
+  await nextTick()
+  followUpTrigger.value?.focus()
+  followUpTrigger.value = undefined
+}
+
+async function cancelCreateFollowUp() {
+  showingCreateFollowUpDialog.value = false
+  await nextTick()
+  createFollowUpTrigger.value?.focus()
+}
+
+async function createFollowUp(draft) {
+  const targetDocument = createFollowUpTrigger.value?.ownerDocument
+  const followUp = createFollowUpModel(draft, props.followUps)
+  emit('create:follow-up', followUp)
+  showingCreateFollowUpDialog.value = false
+  createFollowUpTrigger.value = undefined
+  await nextTick()
+  targetDocument
+    ?.querySelector(`[data-follow-up-id="${followUp.id}"]`)
+    ?.focus()
 }
 
 async function saveAgentMergeSettings(settings) {
@@ -333,9 +420,12 @@ async function saveAgentMergeSettings(settings) {
 
         <div class="titlebar-right">
           <button
+            class="details-toggle"
             type="button"
-            aria-label="Toggle Details"
-            aria-pressed="true"
+            :aria-label="detailsVisible ? 'Hide Details' : 'Show Details'"
+            :aria-pressed="detailsVisible"
+            aria-controls="changes-part"
+            @click="detailsVisible = !detailsVisible"
           >
             <i class="codicon codicon-layout-sidebar-right" aria-hidden="true" />
           </button>
@@ -368,6 +458,12 @@ async function saveAgentMergeSettings(settings) {
           </header>
 
           <div class="sessions-list">
+            <FollowUpsSurface
+              :follow-ups="followUps"
+              :can-create="pullRequestCreated"
+              @create="openCreateFollowUp"
+              @open="openFollowUp"
+            />
             <section aria-labelledby="workspace-sessions-title">
               <h4 id="workspace-sessions-title" class="session-group-heading">
                 <i class="codicon codicon-chevron-down" aria-hidden="true" />
@@ -461,7 +557,10 @@ async function saveAgentMergeSettings(settings) {
 
         </aside>
 
-        <div class="agents-main-region">
+        <div
+          class="agents-main-region"
+          :class="{ 'details-visible': detailsVisible }"
+        >
           <section class="sessions-part agents-part-card" aria-label="Active session">
             <header class="session-header">
               <i
@@ -577,6 +676,7 @@ async function saveAgentMergeSettings(settings) {
                 >
                   <p>{{ scenario.response }}</p>
                 </article>
+
               </div>
 
               <div class="chat-input">
@@ -595,6 +695,8 @@ async function saveAgentMergeSettings(settings) {
           </section>
 
           <aside
+            v-if="detailsVisible"
+            id="changes-part"
             class="changes-part agents-part-card"
             :aria-label="pullRequestCreated ? 'Pull request changes' : 'Feature changes'"
           >
@@ -696,6 +798,7 @@ async function saveAgentMergeSettings(settings) {
         :scenario="scenario"
         :settings="settings"
         :handling-variant="handlingVariant"
+        :follow-up-template="nextFollowUpTemplate"
         @cancel="cancelCreatePullRequest"
         @create="createPullRequest"
       />
@@ -711,6 +814,20 @@ async function saveAgentMergeSettings(settings) {
         settings-only
         @cancel="closeAgentMergeSettings"
         @save="saveAgentMergeSettings"
+      />
+      <FollowUpDialog
+        v-if="selectedFollowUp"
+        :follow-up="selectedFollowUp"
+        :scenario="scenario"
+        :pull-request-details="pullRequestDetails"
+        @close="closeFollowUp"
+      />
+      <CreateFollowUpDialog
+        v-if="showingCreateFollowUpDialog"
+        :template="nextFollowUpTemplate"
+        :scenario="scenario"
+        @cancel="cancelCreateFollowUp"
+        @create="createFollowUp"
       />
     </div>
   </section>
@@ -1112,6 +1229,7 @@ async function saveAgentMergeSettings(settings) {
 }
 
 .agents-main-region {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(380px, 1fr) minmax(250px, 300px);
   gap: var(--vscode-agents-layout-floatingPanelGap);
@@ -1119,6 +1237,10 @@ async function saveAgentMergeSettings(settings) {
   min-height: 0;
   padding: 0 var(--vscode-agents-layout-floatingPanelGap)
     var(--vscode-agents-layout-floatingPanelGap) 0;
+}
+
+.agents-main-region:not(.details-visible) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .agents-part-card {
@@ -1506,13 +1628,16 @@ async function saveAgentMergeSettings(settings) {
   color: var(--vscode-gitDecoration-deletedResourceForeground);
 }
 
-@media (max-width: 1180px) {
-  .agents-main-region {
+@media (max-width: 680px) {
+  .agents-main-region.details-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .changes-part {
-    display: none;
+    position: absolute;
+    inset: 0 0 var(--vscode-agents-layout-floatingPanelGap) auto;
+    z-index: 1;
+    width: min(300px, 100%);
   }
 }
 

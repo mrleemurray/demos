@@ -10,6 +10,7 @@ import {
   repositoryStates,
   scenarios,
 } from './model/scenarios.js'
+import { createScenarioFollowUpTemplates } from './model/followUps.js'
 
 const handlingVariants = [
   { id: 'permissions', label: 'Permissions' },
@@ -26,6 +27,8 @@ const sessionStates = reactive(
       {
         settings: createScenarioSettings(scenario.id),
         pullRequestDetails: createScenarioPullRequestDetails(scenario.id),
+        followUps: [],
+        followUpTemplates: createScenarioFollowUpTemplates(scenario.id),
         repositoryState: scenario.repositoryState,
         pullRequestCreated: false,
       },
@@ -38,6 +41,10 @@ const activeSessionState = computed(
 const settings = computed(() => activeSessionState.value.settings)
 const pullRequestDetails = computed(
   () => activeSessionState.value.pullRequestDetails,
+)
+const followUps = computed(() => activeSessionState.value.followUps)
+const followUpTemplates = computed(
+  () => activeSessionState.value.followUpTemplates,
 )
 const repositoryState = computed({
   get: () => activeSessionState.value.repositoryState,
@@ -117,6 +124,13 @@ function createPullRequest({ details, settings: configuration }) {
   Object.assign(pullRequestDetails.value, details)
   pullRequestCreated.value = true
 }
+
+function createFollowUp(followUp) {
+  if (!pullRequestCreated.value) {
+    throw new Error('A pull request is required before creating a follow up')
+  }
+  followUps.value.push(followUp)
+}
 </script>
 
 <template>
@@ -167,6 +181,7 @@ function createPullRequest({ details, settings: configuration }) {
           </label>
         </div>
       </div>
+
     </aside>
 
     <main class="prototype-layout">
@@ -180,11 +195,14 @@ function createPullRequest({ details, settings: configuration }) {
         "
         :agent-merge-status="agentMergeStatus"
         :handling-variant="handlingVariant"
+        :follow-ups="followUps"
+        :follow-up-templates="followUpTemplates"
         :pull-request-details="pullRequestDetails"
         :pull-request-created="pullRequestCreated"
         :repository-state="repositoryState"
         @advance:repository-state="advanceRepositoryState"
         @create:pull-request="createPullRequest"
+        @create:follow-up="createFollowUp"
         @select:scenario="selectScenario"
         @update:setting="updateSetting"
       />
@@ -220,6 +238,7 @@ function createPullRequest({ details, settings: configuration }) {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   flex: 0 0 auto;
   gap: var(--vscode-spacing-size120);
   min-height: var(--vscode-spacing-size360);

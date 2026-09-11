@@ -228,6 +228,56 @@ suite('Agent Merge lab', () => {
     )
   })
 
+  test('toggles the right-side Changes panel from the title bar', async () => {
+    mountApp()
+
+    const detailsToggle = getElement('.details-toggle')
+    const initial = {
+      label: detailsToggle.getAttribute('aria-label'),
+      pressed: detailsToggle.getAttribute('aria-pressed'),
+      controls: detailsToggle.getAttribute('aria-controls'),
+      panelLabel: getElement('#changes-part').getAttribute('aria-label'),
+    }
+
+    detailsToggle.click()
+    await nextTick()
+    const hidden = {
+      label: detailsToggle.getAttribute('aria-label'),
+      pressed: detailsToggle.getAttribute('aria-pressed'),
+      panelPresent: Boolean(container.querySelector('#changes-part')),
+    }
+
+    detailsToggle.click()
+    await nextTick()
+    const restored = {
+      label: detailsToggle.getAttribute('aria-label'),
+      pressed: detailsToggle.getAttribute('aria-pressed'),
+      panelLabel: getElement('#changes-part').getAttribute('aria-label'),
+    }
+
+    assert.deepEqual(
+      { initial, hidden, restored },
+      {
+        initial: {
+          label: 'Hide Details',
+          pressed: 'true',
+          controls: 'changes-part',
+          panelLabel: 'Feature changes',
+        },
+        hidden: {
+          label: 'Show Details',
+          pressed: 'false',
+          panelPresent: false,
+        },
+        restored: {
+          label: 'Hide Details',
+          pressed: 'true',
+          panelLabel: 'Feature changes',
+        },
+      },
+    )
+  })
+
   test('progresses through commit, publish, and pull request readiness', async () => {
     mountApp()
 
@@ -897,6 +947,653 @@ suite('Agent Merge lab', () => {
     )
   })
 
+  test('presents pull request follow ups in the Sessions automations group', async () => {
+    mountApp()
+
+    const beforePullRequest = {
+      variantSelectorPresent: Boolean(
+        container.querySelector('input[name="followUpVariant"]'),
+      ),
+      location: getElement('.sessions-sidebar').contains(
+        getElement('.follow-ups-surface'),
+      ),
+      heading: getText('.follow-ups-heading'),
+      headingIcon: getElement(
+        '.follow-ups-heading .codicon-calendar',
+      ).className,
+      expanded: getElement(
+        '.follow-ups-heading-button',
+      ).getAttribute('aria-expanded'),
+      createActionPresent: Boolean(
+        container.querySelector('.follow-ups-create-action'),
+      ),
+      configuredCount:
+        container.querySelectorAll('.follow-up-automation').length,
+    }
+
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const automationsPrompt = {
+      location: getElement('.sessions-sidebar').contains(
+        getElement('.follow-ups-surface'),
+      ),
+      inChanges: Boolean(
+        container.querySelector('.changes-part .follow-ups-surface'),
+      ),
+      inTranscript: Boolean(
+        container.querySelector('.chat-transcript .follow-ups-surface'),
+      ),
+      heading: getText('.follow-ups-heading'),
+      action: getText('.follow-ups-create-action'),
+      configuredCount:
+        container.querySelectorAll('.follow-up-automation').length,
+    }
+    const automationsHeading = getElement('.follow-ups-heading-button')
+    automationsHeading.click()
+    await nextTick()
+    const collapsed = {
+      expanded: automationsHeading.getAttribute('aria-expanded'),
+      contentHidden: getElement('.follow-ups-content').hidden,
+      chevron: getElement(
+        '.follow-ups-heading-button > .codicon:first-child',
+      ).className,
+    }
+    automationsHeading.click()
+    await nextTick()
+    const expanded = {
+      expanded: automationsHeading.getAttribute('aria-expanded'),
+      contentHidden: getElement('.follow-ups-content').hidden,
+      chevron: getElement(
+        '.follow-ups-heading-button > .codicon:first-child',
+      ).className,
+    }
+
+    const createTrigger = getElement('.follow-ups-create-action')
+    createTrigger.click()
+    await nextTick()
+    await nextTick()
+    const createDialog = getElement('.create-follow-up-dialog')
+    const progressiveInputs = {
+      triggerType: getElement(
+        'input[name="followUpTriggerType"]:checked',
+      ).value,
+      eventFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="event"]'),
+      ),
+      timeFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="time"]'),
+      ),
+      eventIcon: getElement(
+        'input[name="followUpTriggerType"][value="event"]',
+      ).parentElement.querySelector('.codicon').className,
+      delayFieldPresent: Boolean(
+        container.querySelector('input[name="followUpDelay"]'),
+      ),
+      outputFilePresent: Boolean(
+        container.querySelector('.follow-up-output-file'),
+      ),
+      summaryFieldPresent: Boolean(
+        container.querySelector('input[name="followUpDescription"]'),
+      ),
+      instructionTabs: Array.from(
+        container.querySelectorAll('[role="tab"]'),
+        tab => ({
+          label: tab.textContent.trim(),
+          selected: tab.getAttribute('aria-selected'),
+        }),
+      ),
+      oneInstructionPerLinePresent:
+        createDialog.textContent.includes('one instruction per line'),
+    }
+    const initialFieldFocused =
+      document.activeElement ===
+      getElement('input[name="followUpName"]')
+    const manualTab = getElement('[data-instruction-mode="manual"]')
+    manualTab.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        bubbles: true,
+      }),
+    )
+    await nextTick()
+    await nextTick()
+    const uploadTab = getElement('[data-instruction-mode="upload"]')
+    const tabKeyboardNavigation = {
+      uploadSelected: uploadTab.getAttribute('aria-selected'),
+      uploadFocused: document.activeElement === uploadTab,
+    }
+    uploadTab.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        bubbles: true,
+      }),
+    )
+    await nextTick()
+    await nextTick()
+    tabKeyboardNavigation.manualSelected =
+      manualTab.getAttribute('aria-selected')
+    tabKeyboardNavigation.manualFocused =
+      document.activeElement === manualTab
+    const creation = {
+      role: createDialog.getAttribute('role'),
+      modal: createDialog.getAttribute('aria-modal'),
+      title: getText(`#${createDialog.getAttribute('aria-labelledby')}`),
+      description: getText(
+        `#${createDialog.getAttribute('aria-describedby')}`,
+      ),
+      name: getElement('input[name="followUpName"]').value,
+      source: getElement('input[name="followUpSource"]').value,
+      event: getElement('input[name="followUpEvent"]').value,
+      instructions: getElement(
+        'textarea[name="followUpInstructions"]',
+      ).value,
+      focused: initialFieldFocused,
+    }
+    getElement('.create-follow-up-dialog .primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const firstAutomation = getElement('.follow-up-automation:first-child')
+    const automations = {
+      location: getElement('.sessions-sidebar').contains(
+        getElement('.follow-ups-surface'),
+      ),
+      count: container.querySelectorAll('.follow-up-automation').length,
+      names: Array.from(
+        container.querySelectorAll('.follow-up-automation strong'),
+        element => element.textContent.trim(),
+      ),
+      statuses: Array.from(
+        container.querySelectorAll(
+          '.follow-up-automation-content > span',
+        ),
+        element => element.textContent.trim(),
+      ),
+      accessibleLabels: Array.from(
+        container.querySelectorAll('.follow-up-automation'),
+        element => element.getAttribute('aria-label'),
+      ),
+      createAnotherAction: getText('.follow-ups-create-action'),
+      createdItemFocused: document.activeElement === firstAutomation,
+    }
+
+    firstAutomation.click()
+    await nextTick()
+    await nextTick()
+    const dialog = getElement('.follow-up-dialog')
+    const details = {
+      role: dialog.getAttribute('role'),
+      modal: dialog.getAttribute('aria-modal'),
+      title: getText(`#${dialog.getAttribute('aria-labelledby')}`),
+      description: getText(
+        `#${dialog.getAttribute('aria-describedby')}`,
+      ),
+      status: getText('.follow-up-status'),
+      trigger: {
+        label: getText('.follow-up-definition > div:first-child strong'),
+        metadata: getText(
+          '.follow-up-definition > div:first-child dd span',
+        ),
+      },
+      delay: {
+        label: getText('.follow-up-definition > div:nth-child(2) strong'),
+        value: getText('.follow-up-definition > div:nth-child(2) dd span'),
+      },
+      file: getText('.follow-up-definition code'),
+      pullRequest: {
+        title: getText('.follow-up-pull-request strong'),
+        branch: getText('.follow-up-pull-request span span'),
+      },
+      instructions: getText('.follow-up-instructions pre'),
+      markdown: getText('.follow-up-markdown pre'),
+      focused: document.activeElement === dialog,
+    }
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    )
+    const reverseFocusWrapped =
+      document.activeElement === dialog.querySelector('.secondary-button')
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }),
+    )
+    const forwardFocusWrapped =
+      document.activeElement ===
+      dialog.querySelector('header button')
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    await nextTick()
+    const focusRestored = document.activeElement === firstAutomation
+
+    getElement('[data-session-id="secure"]').click()
+    await nextTick()
+    await nextTick()
+    const withoutActivePullRequest = {
+      location: getElement('.sessions-sidebar').contains(
+        getElement('.follow-ups-surface'),
+      ),
+      heading: getText('.follow-ups-heading'),
+      createActionPresent: Boolean(
+        container.querySelector('.follow-ups-create-action'),
+      ),
+      configuredCount:
+        container.querySelectorAll('.follow-up-automation').length,
+    }
+
+    getElement('[data-session-id="prototype"]').click()
+    await nextTick()
+    await nextTick()
+    const restored = {
+      location: getElement('.sessions-sidebar').contains(
+        getElement('.follow-ups-surface'),
+      ),
+      createAction: getText('.follow-ups-create-action'),
+      names: Array.from(
+        container.querySelectorAll('.follow-up-automation strong'),
+        element => element.textContent.trim(),
+      ),
+    }
+
+    assert.deepEqual(
+      {
+        beforePullRequest,
+        automationsPrompt,
+        collapsed,
+        expanded,
+        progressiveInputs,
+        tabKeyboardNavigation,
+        creation,
+        automations,
+        details,
+        reverseFocusWrapped,
+        forwardFocusWrapped,
+        focusRestored,
+        withoutActivePullRequest,
+        restored,
+      },
+      {
+        beforePullRequest: {
+          variantSelectorPresent: false,
+          location: true,
+          heading: 'Automations',
+          headingIcon: 'codicon codicon-calendar',
+          expanded: 'true',
+          createActionPresent: false,
+          configuredCount: 0,
+        },
+        automationsPrompt: {
+          location: true,
+          inChanges: false,
+          inTranscript: false,
+          heading: 'Automations',
+          action: 'Create Follow Up',
+          configuredCount: 0,
+        },
+        collapsed: {
+          expanded: 'false',
+          contentHidden: true,
+          chevron: 'codicon codicon-chevron-right',
+        },
+        expanded: {
+          expanded: 'true',
+          contentHidden: false,
+          chevron: 'codicon codicon-chevron-down',
+        },
+        progressiveInputs: {
+          triggerType: 'event',
+          eventFieldsPresent: true,
+          timeFieldsPresent: false,
+          eventIcon: 'codicon codicon-zap',
+          delayFieldPresent: false,
+          outputFilePresent: false,
+          summaryFieldPresent: false,
+          instructionTabs: [
+            { label: 'Write Instructions', selected: 'true' },
+            { label: 'Upload Markdown', selected: 'false' },
+          ],
+          oneInstructionPerLinePresent: false,
+        },
+        tabKeyboardNavigation: {
+          uploadSelected: 'true',
+          uploadFocused: true,
+          manualSelected: 'true',
+          manualFocused: true,
+        },
+        creation: {
+          role: 'dialog',
+          modal: 'true',
+          title: 'Create Follow Up',
+          description:
+            'Schedule a future job for pull request #333964.',
+          name: 'Deploy VS Code experiment',
+          source: 'GitHub webhook',
+          event: 'pull_request.merged',
+          instructions:
+            '## Task\n\nDeploy the Agent Merge experiment to 10% of VS Code Insiders.\n\n## Completion\n\nRecord the treatment and control identifiers on the pull request.\nEmit experiment.deployed with the experiment identifier when rollout completes.',
+          focused: true,
+        },
+        automations: {
+          location: true,
+          count: 1,
+          names: ['Deploy VS Code experiment'],
+          statuses: ['Waiting for pull request merge'],
+          accessibleLabels: [
+            'Deploy VS Code experiment. Waiting for pull request merge. 1 week after merge.',
+          ],
+          createAnotherAction: 'New Follow Up',
+          createdItemFocused: true,
+        },
+        details: {
+          role: 'dialog',
+          modal: 'true',
+          title: 'Deploy VS Code experiment',
+          description:
+            'Deploy the Agent Merge experiment to 10% of VS Code Insiders.',
+          status: 'Waiting for pull request merge',
+          trigger: {
+            label: 'Event based',
+            metadata: 'GitHub webhook · pull_request.merged',
+          },
+          delay: {
+            label: '1 week after merge',
+            value: '7d',
+          },
+          file:
+            '.github/follow-ups/deploy-vscode-experiment.followup.md',
+          pullRequest: {
+            title: '#333964 Prototype Agent Merge UX',
+            branch: 'main ← prototype/agent-merge-ux',
+          },
+          instructions:
+            '## Task Deploy the Agent Merge experiment to 10% of VS Code Insiders. ## Completion Record the treatment and control identifiers on the pull request. Emit experiment.deployed with the experiment identifier when rollout completes.',
+          markdown:
+            '--- version: 1 id: deploy-vscode-experiment name: Deploy VS Code experiment trigger: type: event source: GitHub webhook event: pull_request.merged delay: 7d --- ## Task Deploy the Agent Merge experiment to 10% of VS Code Insiders. ## Completion Record the treatment and control identifiers on the pull request. Emit experiment.deployed with the experiment identifier when rollout completes.',
+          focused: true,
+        },
+        reverseFocusWrapped: true,
+        forwardFocusWrapped: true,
+        focusRestored: true,
+        withoutActivePullRequest: {
+          location: true,
+          heading: 'Automations',
+          createActionPresent: false,
+          configuredCount: 0,
+        },
+        restored: {
+          location: true,
+          createAction: 'New Follow Up',
+          names: ['Deploy VS Code experiment'],
+        },
+      },
+    )
+  })
+
+  test('optionally configures a time-based Follow Up from an uploaded Markdown file in the pull request dialog', async () => {
+    mountApp()
+
+    await openCreatePullRequestDialog()
+    await continueToHandlingStep()
+
+    const beforeConfiguration = {
+      checked: getElement('input[name="configureFollowUp"]').checked,
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      stepCount: container.querySelectorAll('.dialog-steps li').length,
+      editorPresent: Boolean(container.querySelector('.follow-up-editor')),
+      primaryAction: getText('.primary-button'),
+    }
+
+    getElement('input[name="configureFollowUp"]').click()
+    await nextTick()
+    await nextTick()
+
+    const optedInHandling = {
+      checked: getElement('input[name="configureFollowUp"]').checked,
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      steps: Array.from(
+        container.querySelectorAll('.dialog-steps li'),
+        item => item.textContent.replace(/\s+/g, ' ').trim(),
+      ),
+      editorPresent: Boolean(container.querySelector('.follow-up-editor')),
+      optionDescription: getText('.follow-up-option-copy > span'),
+      primaryAction: getText('.primary-button'),
+    }
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const eventConfiguration = {
+      description: getText(
+        `#${getElement('.create-pr-dialog').getAttribute('aria-describedby')}`,
+      ),
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      completedSteps: Array.from(
+        container.querySelectorAll('.dialog-steps li.complete'),
+        item => item.textContent.replace(/\s+/g, ' ').trim(),
+      ),
+      editorPresent: Boolean(container.querySelector('.follow-up-editor')),
+      handlingPresent: Boolean(container.querySelector('.handling-step')),
+      focusedControl: document.activeElement.getAttribute('name'),
+      selectedTrigger: getElement(
+        'input[name="followUpTriggerType"]:checked',
+      ).value,
+      eventFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="event"]'),
+      ),
+      timeFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="time"]'),
+      ),
+      manualTabSelected: getElement(
+        '[data-instruction-mode="manual"]',
+      ).getAttribute('aria-selected'),
+      primaryAction: getText('.primary-button'),
+    }
+
+    getElement(
+      'input[name="followUpTriggerType"][value="time"]',
+    ).click()
+    await nextTick()
+    const timeConfiguration = {
+      selectedTrigger: getElement(
+        'input[name="followUpTriggerType"]:checked',
+      ).value,
+      eventFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="event"]'),
+      ),
+      timeFieldsPresent: Boolean(
+        container.querySelector('[data-trigger-fields="time"]'),
+      ),
+      createDisabled: getElement('.primary-button').disabled,
+    }
+
+    await setFieldValue('input[name="followUpDate"]', '2026-09-18')
+    await setFieldValue('input[name="followUpTime"]', '09:30')
+    await setFieldValue(
+      'select[name="followUpTimeZone"]',
+      'UTC',
+      'change',
+    )
+
+    getElement('.back-button').click()
+    await nextTick()
+    await nextTick()
+    const returnedToHandling = {
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      checked: getElement('input[name="configureFollowUp"]').checked,
+      editorPresent: Boolean(container.querySelector('.follow-up-editor')),
+      focusedControl: document.activeElement.getAttribute('name'),
+      primaryAction: getText('.primary-button'),
+    }
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+    const restoredFollowUp = {
+      currentStep: getText('.dialog-steps [aria-current="step"]'),
+      selectedTrigger: getElement(
+        'input[name="followUpTriggerType"]:checked',
+      ).value,
+      scheduledDate: getElement('input[name="followUpDate"]').value,
+      scheduledTime: getElement('input[name="followUpTime"]').value,
+      timeZone: getElement('select[name="followUpTimeZone"]').value,
+      focusedControl: document.activeElement.getAttribute('name'),
+      createDisabled: getElement('.primary-button').disabled,
+    }
+
+    getElement('[data-instruction-mode="upload"]').click()
+    await nextTick()
+    const uploadInput = getElement('input[name="followUpFile"]')
+    const markdownFile = new File(
+      ['# Verify rollout\n\nSummarize the experiment results.'],
+      'experiment-results.md',
+      { type: 'text/markdown' },
+    )
+    Object.defineProperty(uploadInput, 'files', {
+      configurable: true,
+      value: [markdownFile],
+    })
+    uploadInput.dispatchEvent(new Event('change', { bubbles: true }))
+    await new Promise(resolve => setTimeout(resolve, 20))
+    await nextTick()
+
+    const uploadConfiguration = {
+      uploadTabSelected: getElement(
+        '[data-instruction-mode="upload"]',
+      ).getAttribute('aria-selected'),
+      manualInputPresent: Boolean(
+        container.querySelector('textarea[name="followUpInstructions"]'),
+      ),
+      uploadedFile: getText('.follow-up-uploaded-file code'),
+      fileSharesPickerRow:
+        getElement('.follow-up-file-picker').parentElement ===
+        getElement('.follow-up-uploaded-file').parentElement,
+      uploadErrorPresent: Boolean(
+        container.querySelector('.follow-up-upload-error'),
+      ),
+      createDisabled: getElement('.primary-button').disabled,
+    }
+
+    getElement('.primary-button').click()
+    await nextTick()
+    await nextTick()
+
+    const createdAutomation = getElement('.follow-up-automation')
+    createdAutomation.click()
+    await nextTick()
+    await nextTick()
+    const createdDialog = getElement('.follow-up-dialog')
+
+    assert.deepEqual(
+      {
+        beforeConfiguration,
+        optedInHandling,
+        eventConfiguration,
+        timeConfiguration,
+        returnedToHandling,
+        restoredFollowUp,
+        uploadConfiguration,
+        created: {
+          description: getText(
+            `#${createdDialog.getAttribute('aria-describedby')}`,
+          ),
+          status: getText('.follow-up-status'),
+          timing: getText(
+            '.follow-up-definition > div:nth-child(2) strong',
+          ),
+          timeZone: getText(
+            '.follow-up-definition > div:nth-child(2) dd span',
+          ),
+          instructionSource: getText(
+            '.follow-up-instructions-heading span',
+          ),
+          instructions: getText('.follow-up-instructions pre'),
+          markdown: getText('.follow-up-markdown pre'),
+        },
+      },
+      {
+        beforeConfiguration: {
+          checked: false,
+          currentStep: '2 Handling',
+          stepCount: 2,
+          editorPresent: false,
+          primaryAction: 'Create pull request',
+        },
+        optedInHandling: {
+          checked: true,
+          currentStep: '2 Handling',
+          steps: ['Details', '2 Handling', '3 Follow Up'],
+          editorPresent: false,
+          optionDescription: 'Set up a future job on the next step.',
+          primaryAction: 'Continue',
+        },
+        eventConfiguration: {
+          description:
+            'Choose when the follow up runs and what it should do.',
+          currentStep: '3 Follow Up',
+          completedSteps: ['Details', 'Handling'],
+          editorPresent: true,
+          handlingPresent: false,
+          focusedControl: 'followUpName',
+          selectedTrigger: 'event',
+          eventFieldsPresent: true,
+          timeFieldsPresent: false,
+          manualTabSelected: 'true',
+          primaryAction: 'Create pull request',
+        },
+        timeConfiguration: {
+          selectedTrigger: 'time',
+          eventFieldsPresent: false,
+          timeFieldsPresent: true,
+          createDisabled: true,
+        },
+        returnedToHandling: {
+          currentStep: '2 Handling',
+          checked: true,
+          editorPresent: false,
+          focusedControl: 'configureFollowUp',
+          primaryAction: 'Continue',
+        },
+        restoredFollowUp: {
+          currentStep: '3 Follow Up',
+          selectedTrigger: 'time',
+          scheduledDate: '2026-09-18',
+          scheduledTime: '09:30',
+          timeZone: 'UTC',
+          focusedControl: 'followUpName',
+          createDisabled: false,
+        },
+        uploadConfiguration: {
+          uploadTabSelected: 'true',
+          manualInputPresent: false,
+          uploadedFile: 'experiment-results.md',
+          fileSharesPickerRow: true,
+          uploadErrorPresent: false,
+          createDisabled: false,
+        },
+        created: {
+          description: 'Summarize the experiment results.',
+          status: 'Scheduled',
+          timing: '2026-09-18 at 09:30 UTC',
+          timeZone: 'UTC',
+          instructionSource: 'Uploaded from experiment-results.md',
+          instructions:
+            '# Verify rollout Summarize the experiment results.',
+          markdown:
+            '--- version: 1 id: deploy-vscode-experiment name: Deploy VS Code experiment trigger: type: time date: 2026-09-18 time: 09:30 timezone: UTC --- # Verify rollout Summarize the experiment results.',
+        },
+      },
+    )
+  })
+
   test('creates a pull request with the full-control Agent Merge preset', async () => {
     mountApp()
     await openCreatePullRequestDialog()
@@ -1008,7 +1705,9 @@ suite('Agent Merge lab', () => {
     const dialog = getElement('[role="dialog"]')
     const permissionsVariant = {
       variant: dialog.getAttribute('data-handling-variant'),
-      checkboxCount: dialog.querySelectorAll('.vscode-checkbox').length,
+      checkboxCount: dialog.querySelectorAll(
+        '.agent-merge-permissions .permission-checkbox',
+      ).length,
       checkedVisualCount: dialog.querySelectorAll(
         '.permission-checkbox input:checked + .vscode-checkbox',
       ).length,

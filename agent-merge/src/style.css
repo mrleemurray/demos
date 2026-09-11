@@ -66,7 +66,11 @@ textarea {
 .sessions-list::-webkit-scrollbar,
 .chat-transcript::-webkit-scrollbar,
 .create-pr-dialog-body::-webkit-scrollbar,
-.agent-merge-status-overlay::-webkit-scrollbar {
+.create-follow-up-dialog-body::-webkit-scrollbar,
+.agent-merge-status-overlay::-webkit-scrollbar,
+.follow-up-dialog-body::-webkit-scrollbar,
+.follow-up-instructions pre::-webkit-scrollbar,
+.follow-up-markdown pre::-webkit-scrollbar {
   width: var(--vscode-spacing-size100);
   height: var(--vscode-spacing-size100);
 }
@@ -74,14 +78,22 @@ textarea {
 .sessions-list::-webkit-scrollbar-track,
 .chat-transcript::-webkit-scrollbar-track,
 .create-pr-dialog-body::-webkit-scrollbar-track,
-.agent-merge-status-overlay::-webkit-scrollbar-track {
+.create-follow-up-dialog-body::-webkit-scrollbar-track,
+.agent-merge-status-overlay::-webkit-scrollbar-track,
+.follow-up-dialog-body::-webkit-scrollbar-track,
+.follow-up-instructions pre::-webkit-scrollbar-track,
+.follow-up-markdown pre::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .sessions-list::-webkit-scrollbar-thumb,
 .chat-transcript::-webkit-scrollbar-thumb,
 .create-pr-dialog-body::-webkit-scrollbar-thumb,
-.agent-merge-status-overlay::-webkit-scrollbar-thumb {
+.create-follow-up-dialog-body::-webkit-scrollbar-thumb,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb,
+.follow-up-dialog-body::-webkit-scrollbar-thumb,
+.follow-up-instructions pre::-webkit-scrollbar-thumb,
+.follow-up-markdown pre::-webkit-scrollbar-thumb {
   min-height: var(--vscode-spacing-size200);
   background: var(--vscode-scrollbarSlider-background);
   background-clip: padding-box;
@@ -92,7 +104,11 @@ textarea {
 .sessions-list::-webkit-scrollbar-thumb:hover,
 .chat-transcript::-webkit-scrollbar-thumb:hover,
 .create-pr-dialog-body::-webkit-scrollbar-thumb:hover,
-.agent-merge-status-overlay::-webkit-scrollbar-thumb:hover {
+.create-follow-up-dialog-body::-webkit-scrollbar-thumb:hover,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb:hover,
+.follow-up-dialog-body::-webkit-scrollbar-thumb:hover,
+.follow-up-instructions pre::-webkit-scrollbar-thumb:hover,
+.follow-up-markdown pre::-webkit-scrollbar-thumb:hover {
   background: var(--vscode-scrollbarSlider-hoverBackground);
   background-clip: padding-box;
 }
@@ -100,7 +116,11 @@ textarea {
 .sessions-list::-webkit-scrollbar-thumb:active,
 .chat-transcript::-webkit-scrollbar-thumb:active,
 .create-pr-dialog-body::-webkit-scrollbar-thumb:active,
-.agent-merge-status-overlay::-webkit-scrollbar-thumb:active {
+.create-follow-up-dialog-body::-webkit-scrollbar-thumb:active,
+.agent-merge-status-overlay::-webkit-scrollbar-thumb:active,
+.follow-up-dialog-body::-webkit-scrollbar-thumb:active,
+.follow-up-instructions pre::-webkit-scrollbar-thumb:active,
+.follow-up-markdown pre::-webkit-scrollbar-thumb:active {
   background: var(--vscode-scrollbarSlider-activeBackground);
   background-clip: padding-box;
 }
@@ -108,7 +128,11 @@ textarea {
 .sessions-list::-webkit-scrollbar-corner,
 .chat-transcript::-webkit-scrollbar-corner,
 .create-pr-dialog-body::-webkit-scrollbar-corner,
-.agent-merge-status-overlay::-webkit-scrollbar-corner {
+.create-follow-up-dialog-body::-webkit-scrollbar-corner,
+.agent-merge-status-overlay::-webkit-scrollbar-corner,
+.follow-up-dialog-body::-webkit-scrollbar-corner,
+.follow-up-instructions pre::-webkit-scrollbar-corner,
+.follow-up-markdown pre::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -116,7 +140,11 @@ textarea {
   .sessions-list,
   .chat-transcript,
   .create-pr-dialog-body,
-  .agent-merge-status-overlay {
+  .create-follow-up-dialog-body,
+  .agent-merge-status-overlay,
+  .follow-up-dialog-body,
+  .follow-up-instructions pre,
+  .follow-up-markdown pre {
     scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
     scrollbar-width: thin;
   }
