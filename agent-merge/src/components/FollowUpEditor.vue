@@ -1,6 +1,37 @@
 <script setup>
 import { computed, ref, useId, watch } from 'vue'
 
+const eventSources = Object.freeze([
+  {
+    value: 'GitHub webhook',
+    events: [
+      { value: 'pull_request.opened', label: 'Pull request opened' },
+      {
+        value: 'pull_request.ready_for_review',
+        label: 'Pull request ready for review',
+      },
+      { value: 'pull_request.merged', label: 'Pull request merged' },
+      { value: 'pull_request.closed', label: 'Pull request closed' },
+    ],
+  },
+  {
+    value: 'Experiment service webhook',
+    events: [
+      { value: 'experiment.created', label: 'Experiment created' },
+      { value: 'experiment.deployed', label: 'Experiment deployed' },
+      { value: 'experiment.stopped', label: 'Experiment stopped' },
+    ],
+  },
+  {
+    value: 'Release webhook',
+    events: [
+      { value: 'release.published', label: 'Release published' },
+      { value: 'release.deployed', label: 'Release deployed' },
+      { value: 'release.rolled_back', label: 'Release rolled back' },
+    ],
+  },
+])
+
 const props = defineProps({
   template: {
     type: Object,
@@ -28,6 +59,40 @@ const manualTabId = `follow-up-manual-tab-${editorId}`
 const manualPanelId = `follow-up-manual-panel-${editorId}`
 const uploadTabId = `follow-up-upload-tab-${editorId}`
 const uploadPanelId = `follow-up-upload-panel-${editorId}`
+const sourceOptions = computed(() => {
+  if (
+    !props.template.sourceLabel ||
+    eventSources.some(option => option.value === props.template.sourceLabel)
+  ) {
+    return eventSources
+  }
+  return [
+    {
+      value: props.template.sourceLabel,
+      events: [],
+    },
+    ...eventSources,
+  ]
+})
+const eventOptions = computed(() => {
+  const sourceEvents =
+    sourceOptions.value.find(option => option.value === source.value)?.events ??
+    []
+  if (
+    source.value !== props.template.sourceLabel ||
+    !props.template.event ||
+    sourceEvents.some(option => option.value === props.template.event)
+  ) {
+    return sourceEvents
+  }
+  return [
+    {
+      value: props.template.event,
+      label: props.template.eventLabel ?? props.template.event,
+    },
+    ...sourceEvents,
+  ]
+})
 const usesTemplateName = computed(
   () => name.value.trim() === props.template.name,
 )
@@ -60,6 +125,11 @@ watch(
   valid => emit('update:valid', valid),
   { immediate: true },
 )
+watch(source, () => {
+  if (!eventOptions.value.some(option => option.value === eventName.value)) {
+    eventName.value = eventOptions.value[0]?.value ?? ''
+  }
+})
 
 function focus() {
   nameInput.value?.focus()
@@ -301,22 +371,27 @@ defineExpose({ focus, getDraft })
       >
         <label class="follow-up-editor-field">
           <span>Webhook source</span>
-          <input
-            v-model="source"
-            name="followUpSource"
-            type="text"
-            required
-          />
+          <select v-model="source" name="followUpSource" required>
+            <option
+              v-for="option in sourceOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.value }}
+            </option>
+          </select>
         </label>
         <label class="follow-up-editor-field">
           <span>Event</span>
-          <input
-            v-model="eventName"
-            name="followUpEvent"
-            type="text"
-            required
-            spellcheck="false"
-          />
+          <select v-model="eventName" name="followUpEvent" required>
+            <option
+              v-for="option in eventOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
         </label>
       </div>
 

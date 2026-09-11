@@ -1078,6 +1078,38 @@ suite('Agent Merge lab', () => {
       manualTab.getAttribute('aria-selected')
     tabKeyboardNavigation.manualFocused =
       document.activeElement === manualTab
+    const sourceSelect = getElement('select[name="followUpSource"]')
+    const eventSelect = getElement('select[name="followUpEvent"]')
+    const eventDropdowns = {
+      sourceElement: sourceSelect.tagName,
+      selectedSource: sourceSelect.value,
+      sourceOptions: Array.from(sourceSelect.options, option => option.value),
+      eventElement: eventSelect.tagName,
+      selectedEvent: eventSelect.value,
+      eventOptions: Array.from(eventSelect.options, option => ({
+        label: option.textContent.trim(),
+        value: option.value,
+      })),
+    }
+    await setFieldValue(
+      'select[name="followUpSource"]',
+      'Release webhook',
+      'change',
+    )
+    const releaseEvents = {
+      selectedEvent: eventSelect.value,
+      options: Array.from(eventSelect.options, option => option.value),
+    }
+    await setFieldValue(
+      'select[name="followUpSource"]',
+      'GitHub webhook',
+      'change',
+    )
+    await setFieldValue(
+      'select[name="followUpEvent"]',
+      'pull_request.merged',
+      'change',
+    )
     const creation = {
       role: createDialog.getAttribute('role'),
       modal: createDialog.getAttribute('aria-modal'),
@@ -1086,8 +1118,8 @@ suite('Agent Merge lab', () => {
         `#${createDialog.getAttribute('aria-describedby')}`,
       ),
       name: getElement('input[name="followUpName"]').value,
-      source: getElement('input[name="followUpSource"]').value,
-      event: getElement('input[name="followUpEvent"]').value,
+      source: getElement('select[name="followUpSource"]').value,
+      event: getElement('select[name="followUpEvent"]').value,
       instructions: getElement(
         'textarea[name="followUpInstructions"]',
       ).value,
@@ -1211,6 +1243,8 @@ suite('Agent Merge lab', () => {
         expanded,
         progressiveInputs,
         tabKeyboardNavigation,
+        eventDropdowns,
+        releaseEvents,
         creation,
         automations,
         details,
@@ -1267,6 +1301,43 @@ suite('Agent Merge lab', () => {
           uploadFocused: true,
           manualSelected: 'true',
           manualFocused: true,
+        },
+        eventDropdowns: {
+          sourceElement: 'SELECT',
+          selectedSource: 'GitHub webhook',
+          sourceOptions: [
+            'GitHub webhook',
+            'Experiment service webhook',
+            'Release webhook',
+          ],
+          eventElement: 'SELECT',
+          selectedEvent: 'pull_request.merged',
+          eventOptions: [
+            {
+              label: 'Pull request opened',
+              value: 'pull_request.opened',
+            },
+            {
+              label: 'Pull request ready for review',
+              value: 'pull_request.ready_for_review',
+            },
+            {
+              label: 'Pull request merged',
+              value: 'pull_request.merged',
+            },
+            {
+              label: 'Pull request closed',
+              value: 'pull_request.closed',
+            },
+          ],
+        },
+        releaseEvents: {
+          selectedEvent: 'release.published',
+          options: [
+            'release.published',
+            'release.deployed',
+            'release.rolled_back',
+          ],
         },
         creation: {
           role: 'dialog',
