@@ -129,7 +129,10 @@ function createPullRequest({ details, settings: configuration }) {
       class="prototype-variant-controls"
       aria-label="Prototype controls"
     >
-      <label class="prototype-settings-toggle">
+      <label
+        v-if="pullRequestCreated"
+        class="prototype-settings-toggle"
+      >
         <input
           v-model="showChangesPullRequestSettings"
           type="checkbox"

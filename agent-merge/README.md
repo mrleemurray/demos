@@ -2,7 +2,7 @@
 
 A standalone Vue prototype environment for exploring Agent Merge UX without coupling experiments to the production Agents Window.
 
-The lab starts after an agent finishes a feature. The user can move the work through commit, branch publication, and pull request creation before configuring Agent Merge in a focused two-step modal. A global prototype switch shows or hides the PR-specific settings action in Changes without affecting the handling designs or command-center controls. All data and presentation stay local to the demo.
+The lab starts after an agent finishes a feature. The user can move the work through commit, branch publication, and pull request creation before configuring Agent Merge in a focused two-step modal. Once the active session has a pull request, a global prototype switch shows or hides the PR-specific settings action in Changes without affecting the handling designs or command-center controls. All data and presentation stay local to the demo.
 
 ## Development
 
@@ -24,7 +24,7 @@ npm run build
 - A Changes action that progresses through Commit Changes, Publish Branch, and Create Pull Request, then opens a standalone session-level Configure/Update Agent Merge settings dialog
 - A chat-led Create Pull Request prompt that appears once the branch is published
 - A two-step pull request dialog for PR details and post-creation handling
-- A global PR settings in Changes switch that preserves status and session state while showing or hiding the post-creation Configure/Update action and standalone settings dialog
+- A global PR settings in Changes switch, visible only for an active pull request, that preserves status and session state while showing or hiding the post-creation Configure/Update action and standalone settings dialog
 - External prototype controls for comparing permissions, autonomy-scale, and role-based Agent Merge setup, with detailed role cards in the pull request dialog and a rich icon-and-description role dropdown in the status overlay
 - Shared Agent Merge settings across all three handling designs, including VS Code-style permission checkboxes
 - Per-session Agent Merge authorization presets and merge policy reflected after pull request creation

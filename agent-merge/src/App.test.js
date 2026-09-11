@@ -120,6 +120,11 @@ suite('Agent Merge lab', () => {
         theme: getElement('.prototype-app').getAttribute('data-theme'),
         variantControls: {
           selected: getElement('input[name="handlingVariant"]:checked').value,
+          pullRequestSettingsVisible: Boolean(
+            container.querySelector(
+              'input[name="showChangesPullRequestSettings"]',
+            ),
+          ),
           options: Array.from(
             container.querySelectorAll('.variant-switcher label'),
             option => option.textContent.trim(),
@@ -181,6 +186,7 @@ suite('Agent Merge lab', () => {
         theme: 'dark',
         variantControls: {
           selected: 'permissions',
+          pullRequestSettingsVisible: false,
           options: ['Permissions', 'Autonomy scale', 'Roles'],
           outsideWorkbench: true,
         },
@@ -689,32 +695,27 @@ suite('Agent Merge lab', () => {
     )
   })
 
-  test('toggles only pull request settings in Changes without losing session state', async () => {
+  test('shows pull request settings in Changes only for active pull requests', async () => {
     mountApp()
 
-    const settingsUiToggle = getElement(
-      'input[name="showChangesPullRequestSettings"]',
-    )
-    const initial = {
-      role: settingsUiToggle.getAttribute('role'),
-      label: getText('.prototype-settings-toggle'),
-      checked: settingsUiToggle.checked,
+    const beforePullRequest = {
+      settingVisible: Boolean(
+        container.querySelector(
+          'input[name="showChangesPullRequestSettings"]',
+        ),
+      ),
       handlingDesignPresent: Boolean(
         container.querySelector('.handling-variant-control'),
       ),
     }
 
-    settingsUiToggle.click()
-    await nextTick()
-    await nextTick()
-
     await openCreatePullRequestDialog()
-    const creationDetailsWhileHidden = {
+    const creationDetails = {
       steps: getText('.dialog-steps'),
       primaryAction: getText('.primary-button'),
     }
     await continueToHandlingStep()
-    const creationHandlingWhileHidden = {
+    const creationHandling = {
       handlingVariant: getElement(
         '.create-pr-dialog',
       ).getAttribute('data-handling-variant'),
@@ -725,9 +726,23 @@ suite('Agent Merge lab', () => {
     await nextTick()
     await nextTick()
 
+    const settingsUiToggle = getElement(
+      'input[name="showChangesPullRequestSettings"]',
+    )
+    const afterPullRequestCreation = {
+      role: settingsUiToggle.getAttribute('role'),
+      label: getText('.prototype-settings-toggle'),
+      checked: settingsUiToggle.checked,
+      pullRequest: getText('.pull-request-heading strong'),
+      settingsAction: getText('.workbench-agent-merge-settings'),
+    }
+
+    settingsUiToggle.click()
+    await nextTick()
+    await nextTick()
     getElement('.agent-merge-status-trigger').click()
     await nextTick()
-    const createdWhileHidden = {
+    const controlsWhileChangesSettingIsOff = {
       pullRequest: getText('.pull-request-heading strong'),
       settingsActionPresent: Boolean(
         container.querySelector('.workbench-agent-merge-settings'),
@@ -752,36 +767,52 @@ suite('Agent Merge lab', () => {
 
     getElement('.agent-merge-status-trigger').click()
     await nextTick()
-    settingsUiToggle.click()
+    getElement('[data-session-id="secure"]').click()
     await nextTick()
     await nextTick()
-    getElement('.agent-merge-status-trigger').click()
-    await nextTick()
-
-    const restored = {
-      checked: settingsUiToggle.checked,
-      pullRequest: getText('.pull-request-heading strong'),
-      settingsAction: getText('.workbench-agent-merge-settings'),
+    const inactivePullRequest = {
+      settingVisible: Boolean(
+        container.querySelector(
+          'input[name="showChangesPullRequestSettings"]',
+        ),
+      ),
       handlingDesignPresent: Boolean(
         container.querySelector('.handling-variant-control'),
       ),
-      statusPermissionsPresent: Boolean(
-        container.querySelector('.status-overlay-permissions'),
+    }
+
+    getElement('[data-session-id="prototype"]').click()
+    await nextTick()
+    await nextTick()
+    const restoredToggle = getElement(
+      'input[name="showChangesPullRequestSettings"]',
+    )
+    const returnedToActivePullRequest = {
+      checked: restoredToggle.checked,
+      pullRequest: getText('.pull-request-heading strong'),
+      settingsActionPresent: Boolean(
+        container.querySelector('.workbench-agent-merge-settings'),
       ),
-      statusFooterPresent: Boolean(
-        container.querySelector('.status-overlay-footer'),
+      handlingDesignPresent: Boolean(
+        container.querySelector('.handling-variant-control'),
       ),
     }
 
-    getElement('.agent-merge-status-trigger').click()
+    restoredToggle.click()
     await nextTick()
+    await nextTick()
+    const restored = {
+      checked: restoredToggle.checked,
+      settingsAction: getText('.workbench-agent-merge-settings'),
+    }
+
     getElement('.workbench-agent-merge-settings').click()
     await nextTick()
     await nextTick()
     const settingsDialogOpened = getElement(
       '.create-pr-dialog',
     ).getAttribute('data-dialog-mode')
-    settingsUiToggle.click()
+    restoredToggle.click()
     await nextTick()
     await nextTick()
     const hiddenWhileConfiguring = {
@@ -793,45 +824,45 @@ suite('Agent Merge lab', () => {
 
     assert.deepEqual(
       {
-        initial,
-        hidden: {
-          checked: false,
-          handlingDesignPresent: true,
-          creationDetailsWhileHidden,
-          creationHandlingWhileHidden,
-        },
-        createdWhileHidden,
+        beforePullRequest,
+        creationDetails,
+        creationHandling,
+        afterPullRequestCreation,
+        controlsWhileChangesSettingIsOff,
+        inactivePullRequest,
+        returnedToActivePullRequest,
         restored,
         settingsDialogOpened,
         hiddenWhileConfiguring,
       },
       {
-        initial: {
+        beforePullRequest: {
+          settingVisible: false,
+          handlingDesignPresent: true,
+        },
+        creationDetails: {
+          steps: '1 Details 2 Handling',
+          primaryAction: 'Continue',
+        },
+        creationHandling: {
+          handlingVariant: 'permissions',
+          settings: {
+            mode: 'agentMerge',
+            addressReviews: true,
+            fixCI: true,
+            resolveConflicts: true,
+            mergePullRequest: 'always',
+          },
+          primaryAction: 'Create pull request',
+        },
+        afterPullRequestCreation: {
           role: 'switch',
           label: 'PR settings in Changes',
           checked: true,
-          handlingDesignPresent: true,
+          pullRequest: '#333964',
+          settingsAction: 'Update Agent Merge Settings',
         },
-        hidden: {
-          checked: false,
-          handlingDesignPresent: true,
-          creationDetailsWhileHidden: {
-            steps: '1 Details 2 Handling',
-            primaryAction: 'Continue',
-          },
-          creationHandlingWhileHidden: {
-            handlingVariant: 'permissions',
-            settings: {
-              mode: 'agentMerge',
-              addressReviews: true,
-              fixCI: true,
-              resolveConflicts: true,
-              mergePullRequest: 'always',
-            },
-            primaryAction: 'Create pull request',
-          },
-        },
-        createdWhileHidden: {
+        controlsWhileChangesSettingIsOff: {
           pullRequest: '#333964',
           settingsActionPresent: false,
           handlingDesignPresent: true,
@@ -843,13 +874,19 @@ suite('Agent Merge lab', () => {
           permissionsPresent: true,
           footerPresent: true,
         },
+        inactivePullRequest: {
+          settingVisible: false,
+          handlingDesignPresent: true,
+        },
+        returnedToActivePullRequest: {
+          checked: false,
+          pullRequest: '#333964',
+          settingsActionPresent: false,
+          handlingDesignPresent: true,
+        },
         restored: {
           checked: true,
-          pullRequest: '#333964',
           settingsAction: 'Update Agent Merge Settings',
-          handlingDesignPresent: true,
-          statusPermissionsPresent: true,
-          statusFooterPresent: true,
         },
         settingsDialogOpened: 'agent-merge-settings',
         hiddenWhileConfiguring: {
