@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - 'spaces/**'
       - 'agent-merge/**'
       - 'agent-sessions/**'
       - 'bento-layout/**'
@@ -36,6 +37,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # Build spaces
+      - name: Install dependencies (spaces)
+        working-directory: ./spaces
+        run: npm ci --registry=https://registry.npmjs.org/
+
+      - name: Test spaces
+        working-directory: ./spaces
+        run: npm test
+
+      - name: Build spaces
+        working-directory: ./spaces
+        run: npm run build
 
       # Build agent-merge
       - name: Install dependencies (agent-merge)
@@ -130,6 +144,7 @@ jobs:
       - name: Create deployment directory
         run: |
           mkdir -p deploy
+          cp -r spaces/dist deploy/spaces
           cp -r agent-merge/dist deploy/agent-merge
           cp -r agent-sessions/dist deploy/agent-sessions
           cp -r bento-layout/dist deploy/bento-layout
