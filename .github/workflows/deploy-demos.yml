@@ -38,16 +38,16 @@ jobs:
         with:
           node-version: '20'
 
-      # Build spaces
-      - name: Install dependencies (spaces)
+      # Build Collections
+      - name: Install dependencies (Collections)
         working-directory: ./spaces
         run: npm ci --registry=https://registry.npmjs.org/
 
-      - name: Test spaces
+      - name: Test Collections
         working-directory: ./spaces
         run: npm test
 
-      - name: Build spaces
+      - name: Build Collections
         working-directory: ./spaces
         run: npm run build
 
